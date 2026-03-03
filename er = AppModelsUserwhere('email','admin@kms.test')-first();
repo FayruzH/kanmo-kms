@@ -1,0 +1,15 @@
+[90m= [39m[34;4mApp\Models\User[39;24m {#5994
+    [34mid[39m: [35m1[39m,
+    [34mname[39m: "[32mAdmin KMS[39m",
+    [34memail[39m: "[32madmin@kms.test[39m",
+    [34memail_verified_at[39m: [36mnull[39m,
+    #[33mpassword[39m: "[32m$2y$12$WWUyxg0tcsdOckL0u6rBQOejGLi3N3MYWr7zOvyXka1lfe0FFJlQi[39m",
+    #[33mremember_token[39m: "[32mz8uBz0qvGcEKXpZoYr0pXfm7h3XP67b5LBRNKv5tFLjM91oRLl6371GcEnWb[39m",
+    [34mcreated_at[39m: "[32m2026-03-03 03:47:11[39m",
+    [34mupdated_at[39m: "[32m2026-03-03 03:47:11[39m",
+    [34mrole[39m: "[32memployee[39m",
+    [34mdepartment[39m: [36mnull[39m,
+    [34mentity[39m: [36mnull[39m,
+    [34mactive[39m: [35m1[39m,
+  }
+
