@@ -11,76 +11,122 @@ use App\Models\SopDocument;
 use App\Models\SopSourceApp;
 use App\Models\SopTag;
 use App\Models\User;
+use App\Services\SopStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class SopManagementController extends Controller
 {
+    public function dashboard(Request $request)
+    {
+        $q = SopDocument::query()
+            ->with(['category', 'department', 'pic', 'tags'])
+            ->withCount([
+                'likes',
+                'comments',
+                'activityLogs as views_count',
+            ])
+            ->orderByDesc('updated_at');
+
+        if ($request->filled('status')) {
+            $q->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('department_id')) {
+            $q->where('department_id', $request->integer('department_id'));
+        }
+
+        if ($request->filled('category_id')) {
+            $q->where('category_id', $request->integer('category_id'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->trim()->value();
+            $q->where(function ($inner) use ($search) {
+                $inner->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('summary', 'like', '%' . $search . '%');
+            });
+        }
+
+        $items = $q->paginate(9)->withQueryString();
+        $totals = [
+            'all' => SopDocument::query()->count(),
+            'active' => SopDocument::query()->where('status', 'active')->count(),
+            'expiring_soon' => SopDocument::query()->where('status', 'expiring_soon')->count(),
+            'expired' => SopDocument::query()->where('status', 'expired')->count(),
+        ];
+
+        return view('admin.dashboard', [
+            'items' => $items,
+            'totals' => $totals,
+            'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
+            'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $q = SopDocument::query()
-            ->with(['category','department','pic'])
+            ->with(['category', 'department', 'pic', 'tags'])
             ->orderByDesc('updated_at');
 
-        if ($request->filled('status')) $q->where('status', $request->status);
-        if ($request->filled('department_id')) $q->where('department_id', $request->department_id);
-        if ($request->filled('category_id')) $q->where('category_id', $request->category_id);
+        if ($request->filled('status')) {
+            $q->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('department_id')) {
+            $q->where('department_id', $request->integer('department_id'));
+        }
+
+        if ($request->filled('category_id')) {
+            $q->where('category_id', $request->integer('category_id'));
+        }
 
         if ($request->filled('search')) {
-            $q->whereFullText(['title','summary'], $request->search);
+            $search = $request->string('search')->trim()->value();
+            $q->where(function ($inner) use ($search) {
+                $inner->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('summary', 'like', '%' . $search . '%');
+            });
         }
 
         return view('admin.sop.index', [
             'items' => $q->paginate(15)->withQueryString(),
-            'categories' => SopCategory::where('active', true)->orderBy('name')->get(),
-            'departments' => SopDepartment::where('active', true)->orderBy('name')->get(),
+            'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
+            'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
+            'sourceApps' => SopSourceApp::query()->where('active', true)->orderBy('name')->get(),
+            'pics' => User::query()->where('active', true)->orderBy('name')->get(),
         ]);
     }
 
     public function create()
     {
-        return view('admin.sop.create', [
-            'categories' => SopCategory::where('active', true)->orderBy('name')->get(),
-            'departments' => SopDepartment::where('active', true)->orderBy('name')->get(),
-            'sourceApps' => SopSourceApp::where('active', true)->orderBy('name')->get(),
-            'pics' => User::where('active', true)->orderBy('name')->get(),
-        ]);
+        return view('admin.sop.create', $this->formOptions());
     }
 
-    public function store(StoreSopDocumentRequest $request)
+    public function store(StoreSopDocumentRequest $request, SopStatusService $statusService)
     {
         $data = $request->validated();
         $tagsInput = $data['tags'] ?? null;
         unset($data['tags'], $data['file']);
 
-        $filePath = null;
-        $fileMime = null;
-
         if (($data['type'] ?? null) === 'file' && $request->hasFile('file')) {
-            $filePath = $request->file('file')->store('sop', 'public');
-            $fileMime = $request->file('file')->getMimeType();
+            $uploaded = $request->file('file');
+            $data['file_path'] = $uploaded->store('sop', 'public');
+            $data['file_mime'] = $uploaded->getMimeType();
             $data['url'] = null;
         }
 
-        $doc = SopDocument::create([
-            ...$data,
-            'file_path' => $filePath,
-            'file_mime' => $fileMime,
-        ]);
-
-        // tags: "a, b, c"
-        if (!empty($tagsInput)) {
-            $tagNames = collect(explode(',', $tagsInput))
-                ->map(fn($t) => trim($t))
-                ->filter()
-                ->unique();
-
-            $tagIds = $tagNames->map(function ($name) {
-                return SopTag::firstOrCreate(['name' => $name])->id;
-            })->all();
-
-            $doc->tags()->sync($tagIds);
+        if (($data['status'] ?? null) === 'archived') {
+            $data['archived_at'] = now();
         }
+
+        $doc = SopDocument::create($data);
+        if ($doc->status !== 'archived') {
+            $doc->status = $statusService->resolveStatus($doc);
+            $doc->save();
+        }
+        $this->syncTags($doc, $tagsInput);
 
         return redirect()->route('admin.sop.index')->with('success', 'SOP created.');
     }
@@ -89,42 +135,105 @@ class SopManagementController extends Controller
     {
         $sop->load('tags');
 
-        return view('admin.sop.edit', [
+        return view('admin.sop.edit', array_merge($this->formOptions(), [
             'sop' => $sop,
-            'categories' => SopCategory::where('active', true)->orderBy('name')->get(),
-            'departments' => SopDepartment::where('active', true)->orderBy('name')->get(),
-            'sourceApps' => SopSourceApp::where('active', true)->orderBy('name')->get(),
-            'pics' => User::where('active', true)->orderBy('name')->get(),
             'tagsText' => $sop->tags->pluck('name')->implode(', '),
+        ]));
+    }
+
+    public function show(SopDocument $sop)
+    {
+        $sop->load(['category', 'department', 'pic', 'tags', 'comments.user'])
+            ->loadCount([
+                'likes',
+                'comments',
+                'activityLogs as views_count',
+            ]);
+
+        return view('admin.sop.show', [
+            'sop' => $sop,
         ]);
     }
 
-    public function update(UpdateSopDocumentRequest $request, SopDocument $sop)
+    public function update(UpdateSopDocumentRequest $request, SopDocument $sop, SopStatusService $statusService)
     {
         $data = $request->validated();
         $tagsInput = $data['tags'] ?? null;
         unset($data['tags'], $data['file']);
 
         if (($data['type'] ?? null) === 'file' && $request->hasFile('file')) {
-            if ($sop->file_path) Storage::disk('public')->delete($sop->file_path);
-            $data['file_path'] = $request->file('file')->store('sop', 'public');
-            $data['file_mime'] = $request->file('file')->getMimeType();
+            if ($sop->file_path) {
+                Storage::disk('public')->delete($sop->file_path);
+            }
+
+            $uploaded = $request->file('file');
+            $data['file_path'] = $uploaded->store('sop', 'public');
+            $data['file_mime'] = $uploaded->getMimeType();
             $data['url'] = null;
+        }
+        
+        if (($data['type'] ?? null) === 'url') {
+            if ($sop->file_path) {
+                Storage::disk('public')->delete($sop->file_path);
+            }
+
+            $data['file_path'] = null;
+            $data['file_mime'] = null;
+        }
+
+        if (($data['status'] ?? null) === 'archived') {
+            $data['archived_at'] = $sop->archived_at ?? now();
+        } else {
+            $data['archived_at'] = null;
         }
 
         $sop->update($data);
-
-        if ($tagsInput !== null) {
-            $tagNames = collect(explode(',', $tagsInput))
-                ->map(fn($t) => trim($t))
-                ->filter()
-                ->unique();
-
-            $tagIds = $tagNames->map(fn($name) => SopTag::firstOrCreate(['name' => $name])->id)->all();
-
-            $sop->tags()->sync($tagIds);
+        if ($sop->status !== 'archived') {
+            $sop->status = $statusService->resolveStatus($sop);
+            $sop->save();
         }
+        $this->syncTags($sop, $tagsInput);
 
         return redirect()->route('admin.sop.index')->with('success', 'SOP updated.');
+    }
+
+    public function destroy(SopDocument $sop)
+    {
+        if ($sop->file_path) {
+            Storage::disk('public')->delete($sop->file_path);
+        }
+
+        $sop->tags()->detach();
+        $sop->delete();
+
+        return redirect()->route('admin.sop.index')->with('success', 'SOP deleted.');
+    }
+
+    private function syncTags(SopDocument $document, ?string $tagsInput): void
+    {
+        if ($tagsInput === null) {
+            return;
+        }
+
+        $tagNames = collect(explode(',', $tagsInput))
+            ->map(static fn($tag) => trim($tag))
+            ->filter()
+            ->unique();
+
+        $tagIds = $tagNames
+            ->map(static fn($name) => SopTag::firstOrCreate(['name' => $name])->id)
+            ->all();
+
+        $document->tags()->sync($tagIds);
+    }
+
+    private function formOptions(): array
+    {
+        return [
+            'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
+            'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
+            'sourceApps' => SopSourceApp::query()->where('active', true)->orderBy('name')->get(),
+            'pics' => User::query()->where('active', true)->orderBy('name')->get(),
+        ];
     }
 }

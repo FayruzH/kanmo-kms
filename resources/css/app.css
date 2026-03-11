@@ -1,3 +1,718 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --kms-bg: #f3f5f9;
+  --kms-card: #ffffff;
+  --kms-text: #152033;
+  --kms-muted: #5f6f86;
+  --kms-border: #dbe2ee;
+  --kms-sidebar: #ecd9cb;
+  --kms-sidebar-border: #d7bdaa;
+  --kms-primary: #f26a21;
+}
+
+body {
+  background: var(--kms-bg);
+  color: var(--kms-text);
+  font-family: "Segoe UI", "Inter", sans-serif;
+}
+
+.btn-primary {
+  background-color: var(--kms-primary);
+  border-color: var(--kms-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #d95a15 !important;
+  border-color: #d95a15 !important;
+}
+
+.btn-outline-primary {
+  color: var(--kms-primary);
+  border-color: var(--kms-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+  color: #fff !important;
+  background-color: var(--kms-primary) !important;
+  border-color: var(--kms-primary) !important;
+}
+
+.kms-auth-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 420px at -10% -20%, rgba(242, 106, 33, 0.22), transparent 55%),
+    radial-gradient(700px 340px at 110% 120%, rgba(255, 149, 77, 0.24), transparent 55%),
+    #eef3fb;
+}
+
+.kms-auth-shell {
+  min-height: 100vh;
+}
+
+.kms-auth-hero {
+  max-width: 620px;
+  margin: 0 auto;
+  color: #12325d;
+}
+
+.kms-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kms-auth-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff8b2b, #f15a0a);
+}
+
+.kms-auth-title {
+  font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.kms-auth-sub {
+  color: #5f6f86;
+}
+
+.kms-auth-card {
+  width: min(100%, 460px);
+  background: #fff;
+  border: 1px solid var(--kms-border);
+  border-radius: 18px;
+  padding: 30px;
+  box-shadow: 0 22px 50px rgba(11, 32, 61, 0.12);
+}
+
+.kms-shell {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.25s ease;
+}
+
+.kms-sidebar {
+  background: linear-gradient(180deg, #f3e4d9 0%, #e8d2c1 100%);
+  color: #4e3528;
+  border-color: var(--kms-sidebar-border) !important;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s ease;
+  overflow: hidden;
+}
+
+.kms-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 26px 22px;
+  border-bottom: 1px solid var(--kms-sidebar-border);
+}
+
+.kms-brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff8b2b, #f15a0a);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.kms-brand-title {
+  font-weight: 700;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.kms-brand-sub {
+  color: #876756;
+  font-size: 0.95rem;
+}
+
+.kms-nav {
+  padding: 16px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.kms-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #5b3f30;
+  text-decoration: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, padding 0.25s ease, justify-content 0.25s ease;
+}
+
+.kms-nav-link i {
+  font-size: 1.3rem;
+}
+
+.kms-brand-copy,
+.kms-nav-text,
+.kms-user-meta {
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 240px;
+  overflow: hidden;
+  transition: opacity 0.2s ease, transform 0.25s ease, max-width 0.25s ease;
+}
+
+.kms-nav-link:hover {
+  background: rgba(255, 255, 255, 0.55);
+  color: #3f291f;
+}
+
+.kms-nav-link.active {
+  background: linear-gradient(90deg, #ff932f, #f26a21);
+  color: #ffffff;
+}
+
+.kms-user {
+  margin-top: auto;
+  border-top: 1px solid var(--kms-sidebar-border);
+  padding: 18px 22px;
+}
+
+.kms-profile-menu {
+  position: relative;
+}
+
+.kms-profile-trigger {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kms-profile-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.kms-profile-chevron {
+  margin-left: auto;
+  color: #876756;
+  transition: transform 0.2s ease;
+}
+
+.kms-profile-menu[open] .kms-profile-chevron {
+  transform: rotate(180deg);
+}
+
+.kms-profile-dropdown {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  min-width: 220px;
+  border-radius: 12px;
+  border: 1px solid #d4b9a6;
+  background: #f8eee8;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  z-index: 25;
+}
+
+.kms-profile-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #5b3f30;
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 9px 10px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kms-profile-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #3f291f;
+}
+
+.kms-profile-logout {
+  color: #c4512e;
+}
+
+.kms-user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9a3c, #f26a21);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.kms-content {
+  min-width: 0;
+}
+
+.kms-topbar {
+  padding: 18px 26px;
+  background: var(--kms-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kms-main {
+  padding: 28px;
+}
+
+.sidebar-toggle {
+  text-decoration: none;
+}
+
+@media (min-width: 993px) {
+  .kms-shell.sidebar-collapsed {
+    grid-template-columns: 90px 1fr;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-brand {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-brand-copy,
+  .kms-shell.sidebar-collapsed .kms-nav-text,
+  .kms-shell.sidebar-collapsed .kms-user-meta {
+    opacity: 0;
+    transform: translateX(-8px);
+    max-width: 0;
+    pointer-events: none;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-nav {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-user {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-profile-trigger {
+    justify-content: center;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-profile-chevron {
+    display: none;
+  }
+
+  .kms-shell.sidebar-collapsed .kms-profile-dropdown {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.kms-hero {
+  border-radius: 20px;
+  padding: 40px 34px;
+  background: linear-gradient(135deg, #f68f2d 0%, #f15a0a 100%);
+  color: #ffffff;
+}
+
+.kms-hero h2 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.kms-searchbox {
+  max-width: 580px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 11px 15px;
+  margin-top: 22px;
+  box-shadow: 0 10px 25px rgba(13, 38, 74, 0.2);
+}
+
+.kms-searchbox input {
+  border: 0;
+  box-shadow: none !important;
+}
+
+.kms-stat {
+  border: 1px solid var(--kms-border);
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  background: var(--kms-card);
+}
+
+.kms-stat-title {
+  color: var(--kms-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.kms-stat-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.kms-search-line {
+  max-width: 520px;
+}
+
+.kms-search-line .input-group-text {
+  background: var(--kms-card);
+  border-color: var(--kms-border);
+}
+
+.kms-search-line .form-control {
+  border-left: 0;
+}
+
+.kms-table-wrap {
+  border: 1px solid var(--kms-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--kms-card);
+}
+
+.kms-analytics-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--kms-card) 82%, #f1f5fb 18%);
+  border: 1px solid var(--kms-border);
+  font-size: 1.05rem;
+}
+
+.kms-chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+.kms-table thead th {
+  color: var(--kms-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--kms-border);
+  background: var(--kms-card);
+  padding: 16px;
+}
+
+.kms-table td {
+  border-color: var(--kms-border);
+  padding: 16px;
+}
+
+.kms-upload-drop {
+  border: 2px dashed var(--kms-border);
+  border-radius: 18px;
+  padding: 54px 24px;
+  background: color-mix(in srgb, var(--kms-card) 88%, #f4f7fc 12%);
+}
+
+.kms-mini-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  min-height: 220px;
+}
+
+.kms-bar-wrap {
+  flex: 1;
+  min-width: 52px;
+  text-align: center;
+}
+
+.kms-bar {
+  background: linear-gradient(180deg, #f9a63f, #ea6a12);
+  border-radius: 10px 10px 0 0;
+}
+
+.kms-bar-label {
+  font-size: 0.82rem;
+  color: var(--kms-muted);
+  margin-top: 8px;
+}
+
+.kms-ai-center {
+  text-align: center;
+  max-width: 980px;
+  margin: 24px auto 0;
+}
+
+.kms-ai-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1.6rem;
+  background: linear-gradient(140deg, #ff9a3c, #f26a21);
+}
+
+.kms-detail-card {
+  border: 1px solid var(--kms-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--kms-card);
+}
+
+.kms-detail-hero {
+  padding: 26px 28px 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #f68f2d, #f15a0a);
+}
+
+.kms-detail-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kms-detail-body {
+  display: grid;
+  gap: 16px;
+}
+
+.kms-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kms-info-box {
+  background: color-mix(in srgb, var(--kms-card) 92%, #edf2fa 8%);
+  border: 1px solid var(--kms-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.kms-info-label {
+  font-size: 0.9rem;
+  color: var(--kms-muted);
+  line-height: 1.2;
+}
+
+.kms-info-value {
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.kms-card {
+  border: 1px solid var(--kms-border);
+  border-radius: 16px;
+  background: var(--kms-card);
+  padding: 18px 18px 14px;
+}
+
+.kms-detail-divider {
+  margin: 0;
+}
+
+.kms-detail-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kms-detail-actions .btn {
+  min-width: 130px;
+}
+
+.kms-detail-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.kms-comments-list {
+  align-items: stretch;
+}
+
+.kms-comment-item {
+  background: color-mix(in srgb, var(--kms-card) 95%, #f2f5fa 5%);
+  border-color: var(--kms-border) !important;
+}
+
+.kms-chip {
+  font-size: 0.83rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e8eef7;
+  color: #4a607f;
+}
+
+.kms-type-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.kms-type-icon.url {
+  background: #fff0e6;
+  color: #d85b0f;
+}
+
+.kms-type-icon.file {
+  background: #e7f5f0;
+  color: #1f9a73;
+}
+
+.status-pill {
+  font-size: 0.82rem;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.status-active {
+  color: #0a9b66;
+  background: #e5f7f0;
+  border-color: #bdebd8;
+}
+
+.status-expiring_soon {
+  color: #cc8c1f;
+  background: #fff4df;
+  border-color: #f6ddb1;
+}
+
+.status-expired {
+  color: #cb2b31;
+  background: #ffeaec;
+  border-color: #f8c2c7;
+}
+
+.status-archived {
+  color: #5d6c84;
+  background: #edf1f8;
+  border-color: #d6dfec;
+}
+
+.theme-dark {
+  --kms-bg: #0a1220;
+  --kms-card: #111b2d;
+  --kms-text: #ecf2ff;
+  --kms-muted: #a8b7cf;
+  --kms-border: #28364f;
+  --kms-sidebar: #070e1c;
+  --kms-sidebar-border: #5a4539;
+  background-color: #0a1220;
+  color: var(--kms-text);
+}
+
+.theme-dark .kms-topbar,
+.theme-dark .navbar,
+.theme-dark .card,
+.theme-dark .table,
+.theme-dark .form-control,
+.theme-dark .form-select,
+.theme-dark .kms-stat,
+.theme-dark .kms-card {
+  background: var(--kms-card) !important;
+  color: var(--kms-text) !important;
+  border-color: var(--kms-border) !important;
+}
+
+.theme-dark .kms-upload-drop {
+  background: #0f1c2f;
+}
+
+.theme-dark .text-muted,
+.theme-dark .text-secondary,
+.theme-dark .small {
+  color: #a8b7cf !important;
+}
+
+.theme-dark .kms-chip {
+  background: #1f304a;
+  color: #b8cae6;
+}
+
+@media (max-width: 992px) {
+  .kms-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .kms-sidebar {
+    position: relative;
+    height: auto;
+  }
+
+  .kms-main {
+    padding: 18px;
+  }
+
+  .kms-hero {
+    padding: 26px 20px;
+  }
+
+  .kms-hero h2 {
+    font-size: 1.8rem;
+  }
+
+  .kms-auth-card {
+    padding: 22px;
+  }
+
+  .kms-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kms-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kms-detail-actions .btn {
+    width: 100%;
+  }
+}
