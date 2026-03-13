@@ -4,31 +4,92 @@
 
 @section('content')
 <div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
             <h2 class="mb-1 fw-bold">SOP Management</h2>
             <p class="text-secondary mb-0">Create, edit, and manage all SOP records.</p>
         </div>
-        <button class="btn btn-primary px-4 py-2 rounded-3" data-bs-toggle="modal" data-bs-target="#addSopModal">
-            <i class="bi bi-plus-lg me-1"></i> Add SOP
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-danger px-4 py-2 rounded-3 d-none" id="bulkDeleteBtn">
+                <i class="bi bi-trash3 me-1"></i> Delete Selected
+            </button>
+            <a href="{{ route('admin.sop.export', request()->query()) }}" class="btn btn-outline-secondary px-4 py-2 rounded-3">
+                <i class="bi bi-download me-1"></i> Download
+            </a>
+            <a href="{{ route('admin.sop.create') }}" class="btn btn-primary px-4 py-2 rounded-3">
+                <i class="bi bi-plus-lg me-1"></i> Add SOP
+            </a>
+        </div>
     </div>
 
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    <form method="GET" action="{{ route('admin.sop.index') }}" class="mb-3">
-        <div class="input-group kms-search-line">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Search by title or ID..." value="{{ request('search') }}">
+    <form id="bulkDeleteForm" method="POST" action="{{ route('admin.sop.bulk-destroy') }}" class="d-none">
+        @csrf
+        @method('DELETE')
+        <div id="bulkDeleteInputs"></div>
+    </form>
+
+    <form method="GET" action="{{ route('admin.sop.index') }}" class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label small text-secondary mb-1">Search</label>
+                    <div class="input-group kms-search-line">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Search title or summary..." value="{{ request('search') }}">
+                    </div>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small text-secondary mb-1">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        @foreach (['active', 'expiring_soon', 'expired', 'archived'] as $status)
+                            <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small text-secondary mb-1">Department</label>
+                    <select name="department_id" class="form-select">
+                        <option value="">All Department</option>
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->id }}" @selected((string) request('department_id') === (string) $department->id)>{{ $department->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small text-secondary mb-1">Category</label>
+                    <select name="category_id" class="form-select">
+                        <option value="">All Category</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-lg-1 d-grid">
+                    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+                </div>
+                <div class="col-12 col-lg-1 d-grid">
+                    <a href="{{ route('admin.sop.index') }}" class="btn btn-light border">Reset</a>
+                </div>
+            </div>
         </div>
     </form>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small text-secondary">{{ number_format($items->total()) }} SOP found</span>
+    </div>
 
     <div class="kms-table-wrap">
         <table class="table kms-table align-middle mb-0">
             <thead>
                 <tr>
+                    <th style="width:36px;">
+                        <input type="checkbox" class="form-check-input" id="selectAllSop">
+                    </th>
                     <th>ID</th>
                     <th>Title</th>
                     <th>Department</th>
@@ -37,12 +98,15 @@
                     <th>Status</th>
                     <th>Expiry</th>
                     <th>PIC</th>
-                    <th>Actions</th>
+                    <th style="width:90px;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($items as $item)
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input sop-select" value="{{ $item->id }}">
+                        </td>
                         <td class="text-secondary small">SOP-{{ str_pad((string) $item->id, 3, '0', STR_PAD_LEFT) }}</td>
                         <td class="fw-semibold">{{ $item->title }}</td>
                         <td>{{ $item->department?->name }}</td>
@@ -52,19 +116,16 @@
                         <td>{{ optional($item->expiry_date)->format('M j, Y') }}</td>
                         <td>{{ $item->pic?->name }}</td>
                         <td>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('admin.sop.edit', $item) }}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('admin.sop.destroy', $item) }}" method="POST" onsubmit="return confirm('Delete this SOP?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
-                                </form>
+                            <div class="d-flex">
+                                <a href="{{ route('admin.sop.edit', $item) }}" class="btn btn-sm btn-light" title="Edit SOP">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-secondary">No SOP found.</td>
+                        <td colspan="10" class="text-center py-4 text-secondary">No SOP found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -74,145 +135,63 @@
     <div class="mt-3">{{ $items->links() }}</div>
 </div>
 
-<div class="modal fade" id="addSopModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-xl">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header border-0 px-4 pt-4">
-                <h5 class="modal-title fw-bold">Add New SOP</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('admin.sop.store') }}" method="POST" enctype="multipart/form-data" class="px-4 pb-4" id="addSopForm">
-                @csrf
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Title *</label>
-                        <input type="text" name="title" class="form-control" placeholder="SOP Title" value="{{ old('title') }}" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Category *</label>
-                        <select name="category_id" class="form-select" required>
-                            <option value="">Select category</option>
-                            @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Department *</label>
-                        <select name="department_id" class="form-select" required>
-                            <option value="">Select department</option>
-                            @foreach ($departments as $department)
-                                <option value="{{ $department->id }}" @selected((string) old('department_id') === (string) $department->id)>{{ $department->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Entity</label>
-                        <input type="text" name="entity" class="form-control" placeholder="e.g. Kanmo Group" value="{{ old('entity') }}">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">SOP Type *</label>
-                        <select name="type" id="modalSopType" class="form-select" required>
-                            <option value="url" @selected(old('type') === 'url')>URL Link</option>
-                            <option value="file" @selected(old('type', 'file') === 'file')>File Upload</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6" id="modalFileWrap">
-                        <label class="form-label fw-semibold">File *</label>
-                        <input type="file" name="file" id="modalFileInput" class="form-control">
-                    </div>
-                    <div class="col-md-6" id="modalUrlWrap">
-                        <label class="form-label fw-semibold">URL *</label>
-                        <input type="url" name="url" id="modalUrlInput" class="form-control" placeholder="https://..." value="{{ old('url') }}">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Source App</label>
-                        <select name="source_app_id" class="form-select">
-                            <option value="">Select source</option>
-                            @foreach ($sourceApps as $sourceApp)
-                                <option value="{{ $sourceApp->id }}" @selected((string) old('source_app_id') === (string) $sourceApp->id)>{{ $sourceApp->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Source Name</label>
-                        <input type="text" name="source_name" class="form-control" placeholder="e.g. Store Ops Library" value="{{ old('source_name') }}">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Version *</label>
-                        <input type="text" name="version" class="form-control" placeholder="e.g. 1.0" value="{{ old('version') }}" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Effective Date *</label>
-                        <input type="date" name="effective_date" class="form-control" value="{{ old('effective_date') }}" required>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Expiry Date *</label>
-                        <input type="date" name="expiry_date" class="form-control" value="{{ old('expiry_date') }}" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">PIC (Owner) *</label>
-                        <select name="pic_user_id" class="form-select" required>
-                            <option value="">Select or type owner name</option>
-                            @foreach ($pics as $pic)
-                                <option value="{{ $pic->id }}" @selected((string) old('pic_user_id') === (string) $pic->id)>{{ $pic->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Tags</label>
-                        <input type="text" name="tags" class="form-control" placeholder="Comma-separated, e.g. leave, HR, policy" value="{{ old('tags') }}">
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Summary</label>
-                        <textarea name="summary" class="form-control" rows="3" placeholder="Brief description...">{{ old('summary') }}</textarea>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-end gap-2 mt-4">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4">Create SOP</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <script>
     (function () {
-        const typeSelect = document.getElementById('modalSopType');
-        const urlWrap = document.getElementById('modalUrlWrap');
-        const fileWrap = document.getElementById('modalFileWrap');
-        const urlInput = document.getElementById('modalUrlInput');
-        const fileInput = document.getElementById('modalFileInput');
+        const selectAllSop = document.getElementById('selectAllSop');
+        const rowChecks = Array.from(document.querySelectorAll('.sop-select'));
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const bulkDeleteForm = document.getElementById('bulkDeleteForm');
+        const bulkDeleteInputs = document.getElementById('bulkDeleteInputs');
 
-        function syncTypeUI() {
-            if (!typeSelect) return;
-            const isUrl = typeSelect.value === 'url';
-            if (urlWrap) urlWrap.style.display = isUrl ? 'block' : 'none';
-            if (fileWrap) fileWrap.style.display = isUrl ? 'none' : 'block';
-            if (urlInput) urlInput.required = isUrl;
-            if (fileInput) fileInput.required = !isUrl;
+        function syncBulkDeleteUI() {
+            if (!bulkDeleteBtn) return;
+            const selected = rowChecks.filter((checkbox) => checkbox.checked);
+            const selectedCount = selected.length;
+            bulkDeleteBtn.classList.toggle('d-none', selectedCount === 0);
+            bulkDeleteBtn.disabled = selectedCount === 0;
+            bulkDeleteBtn.innerHTML = `<i class="bi bi-trash3 me-1"></i> Delete Selected (${selectedCount})`;
+
+            if (selectAllSop) {
+                const total = rowChecks.length;
+                selectAllSop.checked = total > 0 && selectedCount === total;
+                selectAllSop.indeterminate = selectedCount > 0 && selectedCount < total;
+            }
         }
 
-        if (typeSelect) {
-            typeSelect.addEventListener('change', syncTypeUI);
-            syncTypeUI();
+        if (selectAllSop) {
+            selectAllSop.addEventListener('change', function () {
+                rowChecks.forEach((checkbox) => {
+                    checkbox.checked = selectAllSop.checked;
+                });
+                syncBulkDeleteUI();
+            });
         }
 
-        @if ($errors->any())
-        const modalEl = document.getElementById('addSopModal');
-        if (modalEl && window.bootstrap) {
-            new bootstrap.Modal(modalEl).show();
+        rowChecks.forEach((checkbox) => {
+            checkbox.addEventListener('change', syncBulkDeleteUI);
+        });
+
+        if (bulkDeleteBtn && bulkDeleteForm && bulkDeleteInputs) {
+            bulkDeleteBtn.addEventListener('click', function () {
+                const selected = rowChecks.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+                if (selected.length === 0) return;
+
+                if (!confirm(`Delete ${selected.length} selected SOP(s)?`)) return;
+
+                bulkDeleteInputs.innerHTML = '';
+                selected.forEach((id) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'sop_ids[]';
+                    input.value = id;
+                    bulkDeleteInputs.appendChild(input);
+                });
+
+                bulkDeleteForm.submit();
+            });
         }
-        @endif
+
+        syncBulkDeleteUI();
     })();
 </script>
 @endsection

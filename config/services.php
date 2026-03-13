@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'kep' => [
+        'endpoint' => env('KEP_API_URL', 'https://kanmoemployeeportal.com/api/kep'),
+        'timeout' => (int) env('KEP_API_TIMEOUT', 90),
+        'sync_password' => (bool) env('KEP_SYNC_PASSWORD', false),
+    ],
+
 ];

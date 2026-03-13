@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SopReminderMail;
 use App\Models\ReminderJob;
 use App\Models\SopDocument;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class SopExpiredController extends Controller
 {
@@ -33,7 +35,9 @@ class SopExpiredController extends Controller
 
     public function remind(SopDocument $sop)
     {
-        ReminderJob::query()->create([
+        $sop->loadMissing('pic');
+
+        $job = ReminderJob::query()->create([
             'sop_id' => $sop->id,
             'pic_user_id' => $sop->pic_user_id,
             'reminder_type' => $sop->status === 'expired' ? 'expired' : 'expiring',
@@ -41,7 +45,31 @@ class SopExpiredController extends Controller
             'meta_json' => ['trigger' => 'manual'],
         ]);
 
-        return back()->with('success', 'Reminder queued.');
+        if (!$sop->pic || !$sop->pic->email) {
+            $job->update([
+                'status' => 'failed',
+                'meta_json' => array_merge($job->meta_json ?? [], ['error' => 'PIC email is missing.']),
+            ]);
+
+            return back()->with('error', 'Reminder failed: PIC email is missing.');
+        }
+
+        try {
+            Mail::to($sop->pic->email)->send(new SopReminderMail($sop, $job->reminder_type));
+            $job->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+
+            return back()->with('success', 'Reminder email sent.');
+        } catch (\Throwable $e) {
+            $job->update([
+                'status' => 'failed',
+                'meta_json' => array_merge($job->meta_json ?? [], ['error' => $e->getMessage()]),
+            ]);
+
+            return back()->with('error', 'Reminder failed to send. Please check mail configuration.');
+        }
     }
 
     public function archive(SopDocument $sop)

@@ -21,6 +21,8 @@ Route::middleware(['auth','role:admin'])
         Route::get('/sop', [SopManagementController::class, 'index'])->name('sop.index');
         Route::get('/sop/create', [SopManagementController::class, 'create'])->name('sop.create');
         Route::post('/sop', [SopManagementController::class, 'store'])->name('sop.store');
+        Route::get('/sop/export', [SopManagementController::class, 'export'])->name('sop.export');
+        Route::delete('/sop/bulk-delete', [SopManagementController::class, 'bulkDestroy'])->name('sop.bulk-destroy');
         Route::get('/sop/{sop}', [SopManagementController::class, 'show'])->whereNumber('sop')->name('sop.show');
         Route::get('/sop/{sop}/edit', [SopManagementController::class, 'edit'])->whereNumber('sop')->name('sop.edit');
         Route::put('/sop/{sop}', [SopManagementController::class, 'update'])->whereNumber('sop')->name('sop.update');
@@ -40,5 +42,14 @@ Route::middleware(['auth','role:admin'])
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/categories', [SettingController::class, 'storeCategory'])->name('settings.categories.store');
+        Route::put('/settings/categories/{category}', [SettingController::class, 'updateCategory'])->name('settings.categories.update');
+        Route::delete('/settings/categories/{category}', [SettingController::class, 'destroyCategory'])->name('settings.categories.destroy');
+        Route::post('/settings/departments', [SettingController::class, 'storeDepartment'])->name('settings.departments.store');
+        Route::put('/settings/departments/{department}', [SettingController::class, 'updateDepartment'])->name('settings.departments.update');
+        Route::delete('/settings/departments/{department}', [SettingController::class, 'destroyDepartment'])->name('settings.departments.destroy');
+        Route::post('/settings/source-apps', [SettingController::class, 'storeSourceApp'])->name('settings.source_apps.store');
+        Route::put('/settings/source-apps/{sourceApp}', [SettingController::class, 'updateSourceApp'])->name('settings.source_apps.update');
+        Route::delete('/settings/source-apps/{sourceApp}', [SettingController::class, 'destroySourceApp'])->name('settings.source_apps.destroy');
 
     });

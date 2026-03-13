@@ -27,7 +27,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="fw-semibold mb-1"><i class="bi bi-file-earmark-arrow-down text-success me-2"></i>Download Import Template</h4>
-                <div class="text-secondary">Use this template to ensure correct column mapping. Required: Title, Category, Department, Expiry Date, PIC.</div>
+                <div class="text-secondary">Use this template to ensure correct column mapping. Required: Title, Category, Department, Expiry Date, <strong>PIC NIP</strong>. Category/Department/Entity/Source/Type sudah dropdown select di file template.</div>
             </div>
             <a href="{{ route('admin.sop.import.template') }}" class="btn btn-outline-secondary px-4">Template</a>
         </div>
@@ -38,10 +38,10 @@
             @csrf
             <i class="bi bi-upload display-6 text-secondary"></i>
             <h4 class="fw-semibold mt-3">Drag & drop your file here</h4>
-            <p class="text-secondary">Supports .xlsx, .xls, .csv files</p>
+            <p class="text-secondary">Supports .xlsx and .csv files</p>
             <label class="btn btn-outline-secondary">
                 Browse Files
-                <input type="file" name="file" class="d-none" accept=".csv,.xls,.xlsx" required>
+                <input type="file" name="file" class="d-none" accept=".csv,.xlsx" required>
             </label>
             <div class="mt-3">
                 <button class="btn btn-primary px-4">Start Import</button>

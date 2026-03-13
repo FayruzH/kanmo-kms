@@ -1,6 +1,6 @@
 @csrf
 @php
-    $selectedType = old('type', $sop->type ?? 'file');
+    $selectedType = old('type', $sop->type ?? 'url');
 @endphp
 
 <div class="row g-3">

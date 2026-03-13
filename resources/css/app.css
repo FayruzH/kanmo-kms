@@ -47,19 +47,27 @@ body {
 .kms-auth-page {
   min-height: 100vh;
   background:
-    radial-gradient(900px 420px at -10% -20%, rgba(242, 106, 33, 0.22), transparent 55%),
-    radial-gradient(700px 340px at 110% 120%, rgba(255, 149, 77, 0.24), transparent 55%),
-    #eef3fb;
+    radial-gradient(860px 420px at -12% -22%, rgba(242, 106, 33, 0.23), transparent 60%),
+    radial-gradient(700px 340px at 110% 118%, rgba(25, 79, 148, 0.16), transparent 62%),
+    linear-gradient(158deg, #eef3fb 0%, #f6f8fc 45%, #edf4fc 100%);
 }
 
 .kms-auth-shell {
   min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+  padding: clamp(18px, 4vw, 48px);
+}
+
+.kms-auth-container {
+  width: min(100%, 1180px);
+  margin: auto;
 }
 
 .kms-auth-hero {
-  max-width: 620px;
-  margin: 0 auto;
+  max-width: 640px;
   color: #12325d;
+  animation: kms-auth-rise 0.55s ease;
 }
 
 .kms-auth-brand {
@@ -82,21 +90,162 @@ body {
 
 .kms-auth-title {
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.95rem;
   line-height: 1.1;
 }
 
 .kms-auth-sub {
   color: #5f6f86;
+  font-size: 0.96rem;
+}
+
+.kms-auth-headline {
+  font-size: clamp(2rem, 3.3vw, 3.2rem);
+  font-weight: 750;
+  line-height: 1.12;
+  color: #123c73;
+  letter-spacing: -0.02em;
+  max-width: 15ch;
+}
+
+.kms-auth-lead {
+  color: #4e6788;
+  font-size: clamp(1rem, 1.35vw, 1.25rem);
+  line-height: 1.6;
+  max-width: 37ch;
+}
+
+.kms-auth-points {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.kms-auth-point {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(18, 60, 115, 0.12);
+  background: rgba(255, 255, 255, 0.58);
+  color: #2b4f7b;
+  font-weight: 500;
+  padding: 11px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.kms-auth-point i {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #1d5fa8;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .kms-auth-card {
   width: min(100%, 460px);
-  background: #fff;
-  border: 1px solid var(--kms-border);
-  border-radius: 18px;
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d9e2f0;
+  border-radius: 24px;
   padding: 30px;
-  box-shadow: 0 22px 50px rgba(11, 32, 61, 0.12);
+  box-shadow: 0 24px 56px rgba(11, 32, 61, 0.14);
+  backdrop-filter: blur(6px);
+  animation: kms-auth-rise 0.65s ease 0.08s both;
+}
+
+.kms-auth-brand-mobile .kms-auth-title {
+  font-size: 1.45rem;
+}
+
+.kms-auth-card-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #082f59;
+}
+
+.kms-auth-card-subtitle {
+  color: #5f7290;
+}
+
+.kms-auth-form .form-label {
+  color: #173d68;
+  margin-bottom: 0.4rem;
+}
+
+.kms-auth-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cfdaea;
+  border-radius: 12px;
+  background: #f9fbff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kms-auth-input-wrap:focus-within {
+  border-color: #9ebee9;
+  box-shadow: 0 0 0 0.2rem rgba(49, 132, 253, 0.12);
+}
+
+.kms-auth-input-wrap.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.12);
+}
+
+.kms-auth-input-icon {
+  width: 44px;
+  display: grid;
+  place-items: center;
+  color: #6f87a8;
+}
+
+.kms-auth-input {
+  border: 0;
+  background: transparent;
+  box-shadow: none !important;
+  height: 50px;
+  padding-left: 0;
+}
+
+.kms-auth-input.is-invalid {
+  background-image: none;
+}
+
+.kms-auth-form .form-text {
+  color: #6a7d98;
+  font-size: 0.81rem;
+}
+
+.kms-auth-meta {
+  font-size: 0.92rem;
+}
+
+.kms-auth-meta .form-check-label {
+  color: #3a567a;
+}
+
+.kms-auth-meta a {
+  color: #1d5fa8;
+  font-weight: 600;
+}
+
+.kms-auth-submit {
+  height: 48px;
+  border-radius: 12px;
+}
+
+@keyframes kms-auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .kms-shell {
@@ -578,6 +727,61 @@ body {
   border-color: var(--kms-border) !important;
 }
 
+.kms-settings-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.kms-settings-dropdown {
+  border: 1px solid var(--kms-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--kms-card) 95%, #f2f6fc 5%);
+  overflow: hidden;
+}
+
+.kms-settings-dropdown > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.kms-settings-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.kms-settings-dropdown[open] > summary {
+  border-bottom: 1px solid var(--kms-border);
+}
+
+.kms-settings-count {
+  font-size: 0.82rem;
+  color: #506584;
+  background: #e6eef9;
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.kms-settings-body {
+  padding: 14px 16px 16px;
+}
+
+.kms-settings-manager {
+  border: 1px dashed var(--kms-border);
+  border-radius: 10px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--kms-card) 92%, #f4f7fb 8%);
+}
+
+.kms-settings-meta {
+  color: var(--kms-muted);
+  font-size: 0.82rem;
+}
+
 .kms-chip {
   font-size: 0.83rem;
   padding: 3px 10px;
@@ -677,6 +881,20 @@ body {
 }
 
 @media (max-width: 992px) {
+  .kms-auth-shell {
+    padding: 16px;
+  }
+
+  .kms-auth-container {
+    max-width: 560px;
+  }
+
+  .kms-auth-card {
+    margin: 0 auto;
+    border-radius: 20px;
+    padding: 22px;
+  }
+
   .kms-shell {
     grid-template-columns: 1fr;
   }
@@ -697,17 +915,41 @@ body {
   .kms-hero h2 {
     font-size: 1.8rem;
   }
-
-  .kms-auth-card {
-    padding: 22px;
-  }
-
   .kms-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
+  .kms-auth-card-title {
+    font-size: 1.7rem;
+  }
+
+  .kms-auth-brand-mobile .kms-auth-title {
+    font-size: 1.32rem;
+  }
+
+  .kms-auth-meta {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  .kms-settings-dropdown > summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kms-settings-count {
+    align-self: flex-start;
+  }
+
+  .kms-settings-manager .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
   .kms-detail-grid {
     grid-template-columns: 1fr;
   }
