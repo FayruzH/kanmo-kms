@@ -8,9 +8,8 @@ Route::middleware(['auth', 'role:employee,admin'])
     ->name('employee.')
     ->group(function () {
         Route::get('/dashboard', [SopPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard/stats-detail', [SopPortalController::class, 'statDetails'])->name('dashboard.stats-detail');
 
-        Route::get('/ai-search', [SopPortalController::class, 'index'])->name('ai.index');
-        Route::post('/ai-search', [SopPortalController::class, 'ask'])->name('ai.ask');
         Route::redirect('/sop', '/employee/dashboard')->name('sop.index');
         Route::get('/sop/{sop}', [SopPortalController::class, 'show'])->name('sop.show');
         Route::post('/sop/{sop}/open', [SopPortalController::class, 'open'])->name('sop.open');

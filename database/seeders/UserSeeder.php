@@ -19,6 +19,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456'),
                 'role' => 'admin',
                 'department' => 'KMS Admin',
+                'division' => 'KMS',
                 'entity' => 'Kanmo',
                 'active' => true,
             ]
@@ -33,6 +34,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456'),
                 'role' => 'employee',
                 'department' => 'Store',
+                'division' => 'Human Resources',
                 'entity' => 'Kanmo',
                 'active' => true,
             ]

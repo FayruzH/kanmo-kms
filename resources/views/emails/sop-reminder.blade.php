@@ -37,7 +37,7 @@
                                 <td style="padding:10px 12px;border-top:1px solid #e3e8f2;font-size:14px;font-weight:600;">{{ $sop->title }}</td>
                             </tr>
                             <tr>
-                                <td style="padding:10px 12px;background:#f8fafd;border-top:1px solid #e3e8f2;font-size:12px;color:#5f6f86;">Category</td>
+                                <td style="padding:10px 12px;background:#f8fafd;border-top:1px solid #e3e8f2;font-size:12px;color:#5f6f86;">Division</td>
                                 <td style="padding:10px 12px;border-top:1px solid #e3e8f2;font-size:14px;">{{ $sop->category?->name ?? '-' }}</td>
                             </tr>
                             <tr>

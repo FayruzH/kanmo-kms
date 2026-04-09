@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SopImportController;
 use App\Http\Controllers\Admin\SopExpiredController;
 use App\Http\Controllers\Admin\SopAnalyticsController;
 use App\Http\Controllers\Admin\SettingController;
-use App\Http\Controllers\Admin\AiSearchController;
 
 Route::middleware(['auth','role:admin'])
     ->prefix('admin')
@@ -15,8 +14,7 @@ Route::middleware(['auth','role:admin'])
 
         Route::get('/dashboard', [SopManagementController::class, 'index'])->name('dashboard');
         Route::get('/overview', [SopManagementController::class, 'dashboard'])->name('overview');
-        Route::get('/ai-search', [AiSearchController::class, 'index'])->name('ai.index');
-        Route::post('/ai-search', [AiSearchController::class, 'ask'])->name('ai.ask');
+        Route::get('/overview/stats-detail', [SopManagementController::class, 'statDetails'])->name('overview.stats-detail');
 
         Route::get('/sop', [SopManagementController::class, 'index'])->name('sop.index');
         Route::get('/sop/create', [SopManagementController::class, 'create'])->name('sop.create');
@@ -33,6 +31,7 @@ Route::middleware(['auth','role:admin'])
         Route::post('/sop/import', [SopImportController::class, 'store'])->name('sop.import.store');
 
         Route::get('/sop/expired', [SopExpiredController::class, 'index'])->name('sop.expired.index');
+        Route::post('/sop/expired/remind-selected', [SopExpiredController::class, 'bulkRemind'])->name('sop.expired.remind-selected');
         Route::post('/sop/{sop}/remind', [SopExpiredController::class, 'remind'])->whereNumber('sop')->name('sop.expired.remind');
         Route::post('/sop/{sop}/archive', [SopExpiredController::class, 'archive'])->whereNumber('sop')->name('sop.expired.archive');
         Route::get('/sop/expired/export', [SopExpiredController::class, 'export'])->name('sop.expired.export');

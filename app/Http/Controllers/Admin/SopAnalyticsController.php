@@ -130,7 +130,7 @@ class SopAnalyticsController extends Controller
             ->get();
 
         $handle = fopen('php://temp', 'r+');
-        fputcsv($handle, ['title', 'category', 'department', 'pic', 'expiry_date', 'status', 'views', 'likes', 'comments']);
+        fputcsv($handle, ['title', 'division', 'department', 'pic', 'expiry_date', 'status', 'views', 'likes', 'comments']);
         foreach ($rows as $row) {
             fputcsv($handle, [
                 $row->title,

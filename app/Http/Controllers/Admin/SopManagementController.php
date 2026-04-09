@@ -12,12 +12,17 @@ use App\Models\SopSourceApp;
 use App\Models\SopTag;
 use App\Models\User;
 use App\Services\SopStatusService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use ZipArchive;
 
 class SopManagementController extends Controller
 {
+    private const DASHBOARD_STAT_KEYS = ['all', 'active', 'expiring_soon', 'expired'];
+    private const DASHBOARD_STATUS_KEYS = ['active', 'expiring_soon', 'expired', 'archived'];
+
     public function dashboard(Request $request)
     {
         $q = SopDocument::query()
@@ -63,6 +68,137 @@ class SopManagementController extends Controller
             'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
             'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    public function statDetails(Request $request)
+    {
+        $validated = $request->validate([
+            'stat' => ['required', Rule::in(self::DASHBOARD_STAT_KEYS)],
+            'search' => ['nullable', 'string', 'max:255'],
+            'department_id' => ['nullable', 'integer', 'exists:sop_departments,id'],
+            'category_id' => ['nullable', 'integer', 'exists:sop_categories,id'],
+            'status' => ['nullable', Rule::in(self::DASHBOARD_STATUS_KEYS)],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:10', 'max:50'],
+        ]);
+
+        $baseQuery = SopDocument::query();
+        $this->applyDashboardStatFilters($baseQuery, $validated);
+
+        $query = (clone $baseQuery)
+            ->select([
+                'id',
+                'title',
+                'department_id',
+                'category_id',
+                'pic_user_id',
+                'status',
+                'expiry_date',
+                'updated_at',
+            ])
+            ->with([
+                'department:id,name',
+                'category:id,name',
+                'pic:id,name',
+            ])
+            ->orderByDesc('updated_at');
+
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $rows = $query->paginate($perPage)->withQueryString();
+
+        $divisionSummary = (clone $baseQuery)
+            ->leftJoin('sop_categories as summary_category', 'summary_category.id', '=', 'sop_documents.category_id')
+            ->selectRaw('summary_category.id as id')
+            ->selectRaw("COALESCE(summary_category.name, '-') as label")
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('summary_category.id')
+            ->groupByRaw("COALESCE(summary_category.name, '-')")
+            ->orderByDesc('total')
+            ->orderBy('label')
+            ->get()
+            ->map(static fn ($row): array => [
+                'id' => $row->id !== null ? (int) $row->id : null,
+                'label' => (string) $row->label,
+                'total' => (int) $row->total,
+            ])
+            ->values();
+
+        $departmentSummary = (clone $baseQuery)
+            ->leftJoin('sop_departments as summary_department', 'summary_department.id', '=', 'sop_documents.department_id')
+            ->selectRaw('summary_department.id as id')
+            ->selectRaw("COALESCE(summary_department.name, '-') as label")
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('summary_department.id')
+            ->groupByRaw("COALESCE(summary_department.name, '-')")
+            ->orderByDesc('total')
+            ->orderBy('label')
+            ->get()
+            ->map(static fn ($row): array => [
+                'id' => $row->id !== null ? (int) $row->id : null,
+                'label' => (string) $row->label,
+                'total' => (int) $row->total,
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => $rows->getCollection()->map(static function (SopDocument $sop): array {
+                return [
+                    'id' => $sop->id,
+                    'sop_code' => 'SOP-' . str_pad((string) $sop->id, 3, '0', STR_PAD_LEFT),
+                    'title' => (string) $sop->title,
+                    'department' => (string) ($sop->department?->name ?? '-'),
+                    'division' => (string) ($sop->category?->name ?? '-'),
+                    'pic' => (string) ($sop->pic?->name ?? '-'),
+                    'status' => (string) $sop->status,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $sop->status)),
+                    'expiry_date' => optional($sop->expiry_date)->toDateString(),
+                    'expiry_date_label' => optional($sop->expiry_date)->format('d M Y'),
+                    'updated_at' => optional($sop->updated_at)->toIso8601String(),
+                    'updated_at_label' => optional($sop->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i'),
+                    'detail_url' => route('admin.sop.show', $sop),
+                ];
+            })->values(),
+            'summaries' => [
+                'by_division' => $divisionSummary,
+                'by_department' => $departmentSummary,
+            ],
+            'meta' => [
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'per_page' => $rows->perPage(),
+                'total' => $rows->total(),
+                'from' => $rows->firstItem(),
+                'to' => $rows->lastItem(),
+            ],
+        ]);
+    }
+
+    private function applyDashboardStatFilters(Builder $query, array $validated): void
+    {
+        if (!empty($validated['search'])) {
+            $search = trim((string) $validated['search']);
+            $query->where(function ($inner) use ($search) {
+                $inner->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('summary', 'like', '%' . $search . '%');
+            });
+        }
+
+        if (!empty($validated['department_id'])) {
+            $query->where('department_id', (int) $validated['department_id']);
+        }
+
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', (int) $validated['category_id']);
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', (string) $validated['status']);
+        }
+
+        $stat = (string) ($validated['stat'] ?? 'all');
+        if ($stat !== 'all') {
+            $query->where('status', $stat);
+        }
     }
 
     public function index(Request $request)
@@ -130,7 +266,7 @@ class SopManagementController extends Controller
             'SOP Code',
             'Title',
             'Department',
-            'Category',
+            'Division',
             'Type',
             'Status',
             'Version',
@@ -179,26 +315,49 @@ class SopManagementController extends Controller
         $data = $request->validated();
         $tagsInput = $data['tags'] ?? null;
         unset($data['tags'], $data['file']);
+        $existing = $this->findDocumentByTitle((string) ($data['title'] ?? ''));
+        $isUpdate = $existing !== null;
 
         if (($data['type'] ?? null) === 'file' && $request->hasFile('file')) {
+            if ($existing?->file_path) {
+                Storage::disk('public')->delete($existing->file_path);
+            }
+
             $uploaded = $request->file('file');
             $data['file_path'] = $uploaded->store('sop', 'public');
             $data['file_mime'] = $uploaded->getMimeType();
             $data['url'] = null;
         }
 
-        if (($data['status'] ?? null) === 'archived') {
-            $data['archived_at'] = now();
+        if (($data['type'] ?? null) === 'url') {
+            if ($existing?->file_path) {
+                Storage::disk('public')->delete($existing->file_path);
+            }
+
+            $data['file_path'] = null;
+            $data['file_mime'] = null;
         }
 
-        $doc = SopDocument::create($data);
+        if (($data['status'] ?? null) === 'archived') {
+            $data['archived_at'] = $existing?->archived_at ?? now();
+        } else {
+            $data['archived_at'] = null;
+        }
+
+        if ($existing) {
+            $existing->update($data);
+            $doc = $existing;
+        } else {
+            $doc = SopDocument::create($data);
+        }
+
         if ($doc->status !== 'archived') {
             $doc->status = $statusService->resolveStatus($doc);
             $doc->save();
         }
         $this->syncTags($doc, $tagsInput);
 
-        return redirect()->route('admin.sop.index')->with('success', 'SOP created.');
+        return redirect()->route('admin.sop.index')->with('success', $isUpdate ? 'SOP updated (duplicate title detected).' : 'SOP created.');
     }
 
     public function edit(SopDocument $sop)
@@ -322,6 +481,19 @@ class SopManagementController extends Controller
             ->all();
 
         $document->tags()->sync($tagIds);
+    }
+
+    private function findDocumentByTitle(string $title): ?SopDocument
+    {
+        $normalizedTitle = mb_strtolower(trim($title));
+        if ($normalizedTitle === '') {
+            return null;
+        }
+
+        return SopDocument::query()
+            ->whereRaw('LOWER(TRIM(title)) = ?', [$normalizedTitle])
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function buildExportXlsx(array $headers, array $rows): string

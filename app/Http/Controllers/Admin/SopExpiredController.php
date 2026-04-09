@@ -35,41 +35,74 @@ class SopExpiredController extends Controller
 
     public function remind(SopDocument $sop)
     {
-        $sop->loadMissing('pic');
+        $result = $this->sendReminderForSop($sop, 'manual');
 
-        $job = ReminderJob::query()->create([
-            'sop_id' => $sop->id,
-            'pic_user_id' => $sop->pic_user_id,
-            'reminder_type' => $sop->status === 'expired' ? 'expired' : 'expiring',
-            'status' => 'pending',
-            'meta_json' => ['trigger' => 'manual'],
+        if ($result['status'] === 'sent') {
+            return back()->with('success', 'Reminder email sent.');
+        }
+
+        return back()->with('error', $result['message'] ?? 'Reminder failed to send. Please check mail configuration.');
+    }
+
+    public function bulkRemind(Request $request)
+    {
+        $validated = $request->validate([
+            'sop_ids' => ['required', 'array', 'min:1'],
+            'sop_ids.*' => ['required', 'integer', 'distinct', 'exists:sop_documents,id'],
         ]);
 
-        if (!$sop->pic || !$sop->pic->email) {
-            $job->update([
-                'status' => 'failed',
-                'meta_json' => array_merge($job->meta_json ?? [], ['error' => 'PIC email is missing.']),
-            ]);
+        $ids = collect($validated['sop_ids'])
+            ->map(static fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
-            return back()->with('error', 'Reminder failed: PIC email is missing.');
+        $sops = SopDocument::query()
+            ->with('pic')
+            ->where('status', 'expired')
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $sentCount = 0;
+        $failedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($ids as $id) {
+            $sop = $sops->get($id);
+            if (!$sop) {
+                $skippedCount++;
+                continue;
+            }
+
+            $result = $this->sendReminderForSop($sop, 'bulk');
+            if ($result['status'] === 'sent') {
+                $sentCount++;
+            } else {
+                $failedCount++;
+            }
         }
 
-        try {
-            Mail::to($sop->pic->email)->send(new SopReminderMail($sop, $job->reminder_type));
-            $job->update([
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
-
-            return back()->with('success', 'Reminder email sent.');
-        } catch (\Throwable $e) {
-            $job->update([
-                'status' => 'failed',
-                'meta_json' => array_merge($job->meta_json ?? [], ['error' => $e->getMessage()]),
-            ]);
-
-            return back()->with('error', 'Reminder failed to send. Please check mail configuration.');
+        if ($sentCount > 0 && $failedCount === 0 && $skippedCount === 0) {
+            return back()->with('success', "Bulk reminder sent for {$sentCount} SOP(s).");
         }
+
+        if ($sentCount === 0 && $failedCount > 0) {
+            return back()->with('error', "Bulk reminder failed for {$failedCount} SOP(s). Please check PIC email or mail configuration.");
+        }
+
+        $parts = [];
+        if ($sentCount > 0) {
+            $parts[] = "sent: {$sentCount}";
+        }
+        if ($failedCount > 0) {
+            $parts[] = "failed: {$failedCount}";
+        }
+        if ($skippedCount > 0) {
+            $parts[] = "skipped: {$skippedCount}";
+        }
+
+        return back()->with('warning', 'Bulk reminder completed partially (' . implode(', ', $parts) . ').');
     }
 
     public function archive(SopDocument $sop)
@@ -91,7 +124,7 @@ class SopExpiredController extends Controller
             ->get();
 
         $handle = fopen('php://temp', 'r+');
-        fputcsv($handle, ['title', 'category', 'department', 'pic', 'expiry_date', 'status']);
+        fputcsv($handle, ['title', 'division', 'department', 'pic', 'expiry_date', 'status']);
         foreach ($rows as $row) {
             fputcsv($handle, [
                 $row->title,
@@ -110,5 +143,60 @@ class SopExpiredController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="expired-sop.csv"',
         ]);
+    }
+
+    private function sendReminderForSop(SopDocument $sop, string $trigger): array
+    {
+        $sop->loadMissing('pic');
+
+        if (!$sop->pic_user_id) {
+            return [
+                'status' => 'failed',
+                'message' => 'Reminder failed: PIC user is missing.',
+            ];
+        }
+
+        $job = ReminderJob::query()->create([
+            'sop_id' => $sop->id,
+            'pic_user_id' => $sop->pic_user_id,
+            'reminder_type' => $sop->status === 'expired' ? 'expired' : 'expiring',
+            'status' => 'pending',
+            'meta_json' => ['trigger' => $trigger],
+        ]);
+
+        if (!$sop->pic || !$sop->pic->email) {
+            $job->update([
+                'status' => 'failed',
+                'meta_json' => array_merge($job->meta_json ?? [], ['error' => 'PIC email is missing.']),
+            ]);
+
+            return [
+                'status' => 'failed',
+                'message' => 'Reminder failed: PIC email is missing.',
+            ];
+        }
+
+        try {
+            Mail::to($sop->pic->email)->send(new SopReminderMail($sop, $job->reminder_type));
+            $job->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+
+            return [
+                'status' => 'sent',
+                'message' => 'Reminder email sent.',
+            ];
+        } catch (\Throwable $e) {
+            $job->update([
+                'status' => 'failed',
+                'meta_json' => array_merge($job->meta_json ?? [], ['error' => $e->getMessage()]),
+            ]);
+
+            return [
+                'status' => 'failed',
+                'message' => 'Reminder failed to send. Please check mail configuration.',
+            ];
+        }
     }
 }

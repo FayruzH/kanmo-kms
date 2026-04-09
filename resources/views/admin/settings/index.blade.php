@@ -39,8 +39,8 @@
             <details class="kms-settings-dropdown" open>
                 <summary>
                     <div>
-                        <h4 class="h5 fw-semibold mb-1">Categories</h4>
-                        <div class="text-secondary">Add, edit, or remove SOP categories.</div>
+                        <h4 class="h5 fw-semibold mb-1">Divisions</h4>
+                        <div class="text-secondary">Add, edit, or remove SOP divisions.</div>
                     </div>
                     <span class="kms-settings-count">{{ $categories->count() }} items</span>
                 </summary>
@@ -55,11 +55,11 @@
                     <form method="POST" action="{{ route('admin.settings.categories.store') }}" class="row g-2 align-items-end mb-3">
                         @csrf
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold small mb-1">New category</label>
-                            <input type="text" class="form-control" name="name" placeholder="Input category name" required>
+                            <label class="form-label fw-semibold small mb-1">New division</label>
+                            <input type="text" class="form-control" name="name" placeholder="Input division name" required>
                         </div>
                         <div class="col-md-4 d-grid">
-                            <button class="btn btn-outline-primary"><i class="bi bi-plus-circle me-1"></i>Add Category</button>
+                            <button class="btn btn-outline-primary"><i class="bi bi-plus-circle me-1"></i>Add Division</button>
                         </div>
                     </form>
 
@@ -72,7 +72,7 @@
                                 @csrf
                                 @method('PUT')
                                 <div class="col-md-5">
-                                    <label class="form-label fw-semibold small mb-1">Select category</label>
+                                    <label class="form-label fw-semibold small mb-1">Select division</label>
                                     <select class="form-select" data-settings-select>
                                         @foreach($categories as $category)
                                             <option value="{{ $category->id }}" data-name="{{ $category->name }}" data-count="{{ $category->documents_count }}">
@@ -91,7 +91,7 @@
                             </form>
                             <div class="d-flex justify-content-between align-items-center mt-2">
                                 <span class="kms-settings-meta" data-settings-usage>0 SOP</span>
-                                <form method="POST" data-settings-delete-form onsubmit="return confirm('Remove selected category from active list?')">
+                                <form method="POST" data-settings-delete-form onsubmit="return confirm('Remove selected division from active list?')">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" data-settings-delete-btn><i class="bi bi-trash me-1"></i>Remove Selected</button>
@@ -99,7 +99,7 @@
                             </div>
                         </div>
                     @else
-                        <div class="text-secondary small">No active categories yet.</div>
+                        <div class="text-secondary small">No active divisions yet.</div>
                     @endif
                 </div>
             </details>

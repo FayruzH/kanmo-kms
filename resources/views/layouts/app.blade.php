@@ -9,8 +9,48 @@
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   <style>
     @media (min-width: 993px) {
+      body.kms-density-80.kms-density-zoom .kms-shell {
+        min-height: calc(100vh / 0.8);
+      }
+
+      body.kms-density-80.kms-density-zoom .kms-sidebar {
+        height: calc(100vh / 0.8);
+      }
+
+      body.kms-density-80.kms-density-layout .kms-shell {
+        grid-template-columns: 232px 1fr;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-brand {
+        padding: 20px 18px;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-brand-title {
+        font-size: 1.4rem;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-brand-sub {
+        font-size: 0.85rem;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-nav-link {
+        padding: 10px 12px;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-nav-link i {
+        font-size: 1.15rem;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-user {
+        padding: 14px 18px;
+      }
+
       .kms-shell.sidebar-collapsed {
         grid-template-columns: 90px 1fr !important;
+      }
+
+      body.kms-density-80.kms-density-layout .kms-shell.sidebar-collapsed {
+        grid-template-columns: 72px 1fr !important;
       }
 
       .kms-shell.sidebar-collapsed .kms-brand {
@@ -47,7 +87,7 @@
     }
   </style>
 </head>
-<body>
+<body class="{{ auth()->check() ? 'kms-density-80' : '' }}">
   @if(auth()->check() && auth()->user()->role === 'admin' && !request()->routeIs('employee.*'))
     <div class="kms-shell kms-can-collapse">
       <aside class="kms-sidebar border-end">
@@ -60,11 +100,11 @@
         </div>
 
         <nav class="kms-nav">
+          <a href="{{ route('admin.overview') }}" class="kms-nav-link {{ request()->routeIs('admin.overview') ? 'active' : '' }}">
+            <i class="bi bi-layout-text-window-reverse"></i><span class="kms-nav-text">Dashboard</span>
+          </a>
           <a href="{{ route('admin.sop.index') }}" class="kms-nav-link {{ request()->routeIs('admin.sop.*') && !request()->routeIs('admin.sop.import.*') && !request()->routeIs('admin.sop.expired.*') ? 'active' : '' }}">
             <i class="bi bi-file-earmark-text"></i><span class="kms-nav-text">SOP Management</span>
-          </a>
-          <a href="{{ route('admin.ai.index') }}" class="kms-nav-link {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}">
-            <i class="bi bi-search"></i><span class="kms-nav-text">AI Search</span>
           </a>
           <a href="{{ route('admin.sop.import.index') }}" class="kms-nav-link {{ request()->routeIs('admin.sop.import.*') ? 'active' : '' }}">
             <i class="bi bi-upload"></i><span class="kms-nav-text">Bulk Import</span>
@@ -77,9 +117,6 @@
           </a>
           <a href="{{ route('admin.settings.index') }}" class="kms-nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
             <i class="bi bi-gear"></i><span class="kms-nav-text">Settings</span>
-          </a>
-          <a href="{{ route('admin.overview') }}" class="kms-nav-link {{ request()->routeIs('admin.overview') ? 'active' : '' }}">
-            <i class="bi bi-layout-text-window-reverse"></i><span class="kms-nav-text">Overview</span>
           </a>
         </nav>
 
@@ -135,9 +172,6 @@
         <nav class="kms-nav">
           <a href="{{ route('employee.dashboard') }}" class="kms-nav-link {{ request()->routeIs('employee.dashboard') || request()->routeIs('employee.sop.show') ? 'active' : '' }}">
             <i class="bi bi-grid"></i><span class="kms-nav-text">Dashboard</span>
-          </a>
-          <a href="{{ route('employee.ai.index') }}" class="kms-nav-link {{ request()->routeIs('employee.ai.*') ? 'active' : '' }}">
-            <i class="bi bi-search"></i><span class="kms-nav-text">AI Search</span>
           </a>
         </nav>
 
@@ -221,13 +255,53 @@
         });
       });
 
+      document.querySelectorAll('form[data-auto-submit]').forEach(function (form) {
+        const textInputs = form.querySelectorAll('[data-auto-submit-input]');
+        const selectInputs = form.querySelectorAll('[data-auto-submit-select]');
+        let submitTimer;
+
+        const submitForm = function () {
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            return;
+          }
+
+          form.submit();
+        };
+
+        textInputs.forEach(function (input) {
+          input.addEventListener('input', function () {
+            clearTimeout(submitTimer);
+            submitTimer = setTimeout(submitForm, 450);
+          });
+        });
+
+        selectInputs.forEach(function (select) {
+          select.addEventListener('change', function () {
+            clearTimeout(submitTimer);
+            submitTimer = setTimeout(submitForm, 200);
+          });
+        });
+      });
+
       const shell = document.querySelector('.kms-shell.kms-can-collapse');
       const toggleBtn = document.querySelector('.sidebar-toggle');
       const sidebarStateKey = 'kms_sidebar_collapsed';
+      const body = document.body;
+      const isDensity80 = body.classList.contains('kms-density-80');
+      const bodyZoomValue = parseFloat(window.getComputedStyle(body).zoom || '1');
+      const hasZoomScale = Number.isFinite(bodyZoomValue) && bodyZoomValue < 0.99;
+      const useCompactLayoutDensity = isDensity80 && !hasZoomScale;
+      body.classList.toggle('kms-density-zoom', isDensity80 && hasZoomScale);
+      body.classList.toggle('kms-density-layout', useCompactLayoutDensity);
+      const expandedSidebarWidth = useCompactLayoutDensity ? '232px' : '290px';
+      const collapsedSidebarWidth = useCompactLayoutDensity ? '72px' : '90px';
       const applySidebar = (collapsed) => {
         if (!shell) return;
         shell.classList.toggle('sidebar-collapsed', collapsed);
-        shell.style.gridTemplateColumns = collapsed ? '90px 1fr' : '290px 1fr';
+        shell.style.gridTemplateColumns = collapsed
+          ? `${collapsedSidebarWidth} 1fr`
+          : `${expandedSidebarWidth} 1fr`;
         localStorage.setItem(sidebarStateKey, collapsed ? '1' : '0');
       };
 

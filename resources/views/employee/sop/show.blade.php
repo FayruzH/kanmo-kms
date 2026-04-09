@@ -24,8 +24,8 @@
 
         <div class="p-4 kms-detail-body">
             <div class="kms-detail-grid mb-3">
+                <div class="kms-info-box"><div class="kms-info-label">Division</div><div class="kms-info-value">{{ $sop->category?->name ?: '-' }}</div></div>
                 <div class="kms-info-box"><div class="kms-info-label">Department</div><div class="kms-info-value">{{ $sop->department?->name ?: '-' }}</div></div>
-                <div class="kms-info-box"><div class="kms-info-label">Category</div><div class="kms-info-value">{{ $sop->category?->name ?: '-' }}</div></div>
                 <div class="kms-info-box"><div class="kms-info-label">Version</div><div class="kms-info-value">{{ $sop->version ?: '-' }}</div></div>
                 <div class="kms-info-box"><div class="kms-info-label">PIC (Owner)</div><div class="kms-info-value">{{ $sop->pic?->name ?: '-' }}</div></div>
                 <div class="kms-info-box"><div class="kms-info-label">Effective Date</div><div class="kms-info-value">{{ optional($sop->effective_date)->format('M j, Y') ?: '-' }}</div></div>

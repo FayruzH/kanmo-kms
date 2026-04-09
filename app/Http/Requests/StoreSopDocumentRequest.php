@@ -32,4 +32,11 @@ class StoreSopDocumentRequest extends FormRequest
             'tags' => ['nullable', 'string'],
         ];
     }
+
+    public function attributes(): array
+    {
+        return [
+            'category_id' => 'division',
+        ];
+    }
 }

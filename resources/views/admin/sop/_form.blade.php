@@ -9,9 +9,9 @@
         <input type="text" name="title" class="form-control" placeholder="SOP Title" value="{{ old('title', $sop->title ?? '') }}" required>
     </div>
     <div class="col-md-6">
-        <label class="form-label fw-semibold">Category *</label>
+        <label class="form-label fw-semibold">Division *</label>
         <select name="category_id" class="form-select" required>
-            <option value="">Select category</option>
+            <option value="">Select division</option>
             @foreach ($categories as $category)
                 <option value="{{ $category->id }}" @selected((string) old('category_id', $sop->category_id ?? '') === (string) $category->id)>{{ $category->name }}</option>
             @endforeach

@@ -10,12 +10,27 @@ class SopCategorySeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            'HR Policy',
-            'IT Procedure',
-            'Retail Operation',
-            'Finance & Accounting',
-            'Warehouse',
-            'Corporate Governance'
+            'BUSINESS DEVELOPMENT',
+            'DIGITAL, OMNICHANNEL & INTELLIGENT TECHNOLOGY',
+            'DISTRIBUTION',
+            'FASHION & ACCESSORIES',
+            'FINANCE',
+            'FOOTWEAR & ACTIVE',
+            'HUMAN RESOURCES',
+            'LEGAL & COMPLIANCE',
+            'LIFESTYLE',
+            'MANAGEMENT',
+            'MARKETING',
+            'MTI',
+            'MTI FINANCE BUSINESS PARTNER',
+            'MTI LOCAL SOURCING',
+            'MTI MARKETING',
+            'MTI OPERATIONS',
+            'MTI RETAIL',
+            'OWN BRAND',
+            'PROJECT & MAINTENANCE',
+            'SHIPPING',
+            'WAREHOUSE',
         ];
 
         foreach ($categories as $name) {

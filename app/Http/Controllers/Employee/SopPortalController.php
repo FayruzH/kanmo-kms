@@ -8,13 +8,16 @@ use App\Models\SopCategory;
 use App\Models\SopDepartment;
 use App\Models\SopDocument;
 use App\Models\SopLike;
-use App\Services\AiSearchService;
 use App\Services\SopActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class SopPortalController extends Controller
 {
+    private const DASHBOARD_STAT_KEYS = ['all', 'active', 'expiring_soon', 'expired'];
+    private const DASHBOARD_STATUS_KEYS = ['active', 'expiring_soon', 'expired'];
+
     public function dashboard(Request $request)
     {
         $query = SopDocument::query()
@@ -60,9 +63,92 @@ class SopPortalController extends Controller
         ]);
     }
 
-    public function index(Request $request)
+    public function statDetails(Request $request)
     {
-        return view('employee.ai.index');
+        $validated = $request->validate([
+            'stat' => ['required', Rule::in(self::DASHBOARD_STAT_KEYS)],
+            'search' => ['nullable', 'string', 'max:255'],
+            'department_id' => ['nullable', 'integer', 'exists:sop_departments,id'],
+            'category_id' => ['nullable', 'integer', 'exists:sop_categories,id'],
+            'status' => ['nullable', Rule::in(self::DASHBOARD_STATUS_KEYS)],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:10', 'max:50'],
+        ]);
+
+        $query = SopDocument::query()
+            ->select([
+                'id',
+                'title',
+                'department_id',
+                'category_id',
+                'pic_user_id',
+                'status',
+                'expiry_date',
+                'updated_at',
+            ])
+            ->with([
+                'department:id,name',
+                'category:id,name',
+                'pic:id,name',
+            ])
+            ->whereIn('status', self::DASHBOARD_STATUS_KEYS)
+            ->orderByDesc('updated_at');
+
+        if (!empty($validated['search'])) {
+            $search = trim((string) $validated['search']);
+            $query->where(function ($inner) use ($search) {
+                $inner->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('summary', 'like', '%' . $search . '%');
+            });
+        }
+
+        if (!empty($validated['department_id'])) {
+            $query->where('department_id', (int) $validated['department_id']);
+        }
+
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', (int) $validated['category_id']);
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', (string) $validated['status']);
+        }
+
+        $stat = (string) $validated['stat'];
+        if ($stat !== 'all') {
+            $query->where('status', $stat);
+        }
+
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $rows = $query->paginate($perPage)->withQueryString();
+
+        return response()->json([
+            'data' => $rows->getCollection()->map(static function (SopDocument $sop): array {
+                return [
+                    'id' => $sop->id,
+                    'sop_code' => 'SOP-' . str_pad((string) $sop->id, 3, '0', STR_PAD_LEFT),
+                    'title' => (string) $sop->title,
+                    'department' => (string) ($sop->department?->name ?? '-'),
+                    'division' => (string) ($sop->category?->name ?? '-'),
+                    'pic' => (string) ($sop->pic?->name ?? '-'),
+                    'status' => (string) $sop->status,
+                    'status_label' => ucfirst(str_replace('_', ' ', (string) $sop->status)),
+                    'expiry_date' => optional($sop->expiry_date)->toDateString(),
+                    'expiry_date_label' => optional($sop->expiry_date)->format('d M Y'),
+                    'updated_at' => optional($sop->updated_at)->toIso8601String(),
+                    'updated_at_label' => optional($sop->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i'),
+                    'detail_url' => route('employee.sop.show', $sop),
+                ];
+            })->values(),
+            'meta' => [
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'per_page' => $rows->perPage(),
+                'total' => $rows->total(),
+                'from' => $rows->firstItem(),
+                'to' => $rows->lastItem(),
+            ],
+        ]);
     }
 
     public function show(SopDocument $sop, SopActivityService $activityService)
@@ -81,21 +167,6 @@ class SopPortalController extends Controller
                 ->where('sop_id', $sop->id)
                 ->where('user_id', auth()->id())
                 ->exists(),
-        ]);
-    }
-
-    public function ask(Request $request, AiSearchService $aiSearchService)
-    {
-        $data = $request->validate([
-            'q' => ['required', 'string', 'max:300'],
-        ]);
-
-        $result = $aiSearchService->search($data['q']);
-
-        return view('employee.ai.index', [
-            'query' => $data['q'],
-            'answer' => $result['answer'],
-            'items' => $result['items'],
         ]);
     }
 

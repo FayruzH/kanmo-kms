@@ -189,7 +189,7 @@ class SettingController extends Controller
     {
         return match ($type) {
             'category' => [
-                'label' => 'Category',
+                'label' => 'Division',
                 'model' => SopCategory::class,
                 'create_bag' => 'categoryCreate',
                 'update_bag' => 'categoryUpdate',

@@ -21,10 +21,30 @@ class SopImportController extends Controller
 {
     public function index()
     {
-        $batches = ImportBatch::query()->with('admin')->latest()->paginate(10);
+        $batches = ImportBatch::query()
+            ->with('admin')
+            ->withCount([
+                'rows as processed_rows_count',
+                'rows as success_rows_count' => fn ($q) => $q->where('status', 'success'),
+                'rows as failed_rows_count' => fn ($q) => $q->where('status', 'failed'),
+            ])
+            ->latest()
+            ->paginate(10);
+
+        $batchIds = $batches->getCollection()
+            ->pluck('id')
+            ->all();
+
+        $failedRowsByBatch = ImportBatchRow::query()
+            ->whereIn('batch_id', $batchIds)
+            ->where('status', 'failed')
+            ->orderBy('row_number')
+            ->get(['batch_id', 'row_number', 'error_message', 'raw_json'])
+            ->groupBy('batch_id');
 
         return view('admin.sop.import', [
             'batches' => $batches,
+            'failedRowsByBatch' => $failedRowsByBatch,
         ]);
     }
 
@@ -32,7 +52,7 @@ class SopImportController extends Controller
     {
         $headers = [
             'title',
-            'category',
+            'division',
             'department',
             'entity',
             'source_name',
@@ -81,8 +101,8 @@ class SopImportController extends Controller
 
         $dropdownDefinitions = [
             [
-                'name' => 'CategoryOptions',
-                'title' => 'Category',
+                'name' => 'DivisionOptions',
+                'title' => 'Division',
                 'values' => $this->normalizeOptionValues(
                     SopCategory::query()->where('active', true)->orderBy('name')->pluck('name')->all(),
                     ['General']
@@ -205,6 +225,16 @@ class SopImportController extends Controller
                 'failed' => $failed,
             ],
         ]);
+
+        if ($failed > 0 && $success === 0) {
+            return redirect()->route('admin.sop.import.index')
+                ->with('error', "Import gagal. Total: {$total}, Success: {$success}, Failed: {$failed}. Cek detail baris error di Import History.");
+        }
+
+        if ($failed > 0) {
+            return redirect()->route('admin.sop.import.index')
+                ->with('warning', "Import selesai sebagian. Success: {$success}, Failed: {$failed}. Cek detail baris error di Import History.");
+        }
 
         return redirect()->route('admin.sop.import.index')
             ->with('success', "Import selesai. Success: {$success}, Failed: {$failed}");
@@ -375,7 +405,7 @@ class SopImportController extends Controller
             }
         }
 
-        $category = $this->pick($raw, ['category', 'kategori', 'sub 0']) ?: 'General';
+        $category = $this->pick($raw, ['division', 'divisi', 'category', 'kategori', 'sub 0']) ?: 'General';
         $department = $this->pick($raw, ['department', 'departemen', 'sub 1']) ?: 'General';
         $entity = $this->pick($raw, ['entity', 'entitas', 'sub 2']);
         $sourceName = $this->pick($raw, ['source_name', 'source app', 'source']);
@@ -467,6 +497,9 @@ class SopImportController extends Controller
             'pic_nip' => ['required', 'string', 'max:10', 'regex:/^\d+$/'],
             'type' => ['required', 'in:url,file'],
             'tags' => ['nullable', 'string'],
+        ], [], [
+            'category' => 'division',
+            'pic_nip' => 'PIC NIP',
         ]);
 
         if ($validator->fails()) {
@@ -500,7 +533,7 @@ class SopImportController extends Controller
             return ['status' => 'failed', 'error' => 'PIC user tidak ditemukan untuk NIP: '.$data['pic_nip']];
         }
 
-        $doc = SopDocument::query()->create([
+        $attributes = [
             'title' => $data['title'],
             'category_id' => $category->id,
             'department_id' => $department->id,
@@ -513,15 +546,42 @@ class SopImportController extends Controller
             'effective_date' => $data['effective_date'] ?: null,
             'expiry_date' => $data['expiry_date'],
             'pic_user_id' => $pic->id,
-            'status' => 'active',
             'summary' => $data['summary'],
-        ]);
+            'status' => 'active',
+            'archived_at' => null,
+        ];
+
+        if ($data['type'] === 'url') {
+            $attributes['file_path'] = null;
+            $attributes['file_mime'] = null;
+        }
+
+        $doc = $this->findDocumentByTitle($data['title']);
+        if ($doc) {
+            $doc->fill($attributes);
+            $doc->save();
+        } else {
+            $doc = SopDocument::query()->create($attributes);
+        }
 
         $doc->status = $statusService->resolveStatus($doc);
         $doc->save();
         $this->syncTags($doc, $data['tags'] ?? null);
 
         return ['status' => 'success', 'error' => null];
+    }
+
+    private function findDocumentByTitle(string $title): ?SopDocument
+    {
+        $normalizedTitle = mb_strtolower(trim($title));
+        if ($normalizedTitle === '') {
+            return null;
+        }
+
+        return SopDocument::query()
+            ->whereRaw('LOWER(TRIM(title)) = ?', [$normalizedTitle])
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function syncTags(SopDocument $document, ?string $tagsInput): void
