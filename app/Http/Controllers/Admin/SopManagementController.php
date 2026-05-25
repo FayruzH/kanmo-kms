@@ -11,6 +11,7 @@ use App\Models\SopDocument;
 use App\Models\SopSourceApp;
 use App\Models\SopTag;
 use App\Models\User;
+use App\Services\SopSearchService;
 use App\Services\SopStatusService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -22,9 +23,12 @@ class SopManagementController extends Controller
 {
     private const DASHBOARD_STAT_KEYS = ['all', 'active', 'expiring_soon', 'expired'];
     private const DASHBOARD_STATUS_KEYS = ['active', 'expiring_soon', 'expired', 'archived'];
+    private const PER_PAGE_OPTIONS = [20, 50, 100, 500, 1000];
 
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, SopSearchService $searchService)
     {
+        $perPage = $this->resolvePerPage($request, self::PER_PAGE_OPTIONS[0]);
+
         $q = SopDocument::query()
             ->with(['category', 'department', 'pic', 'tags'])
             ->withCount([
@@ -46,15 +50,10 @@ class SopManagementController extends Controller
             $q->where('category_id', $request->integer('category_id'));
         }
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->trim()->value();
-            $q->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
+        $searchContext = $searchService->applyToQuery($q, $request->input('search'));
 
-        $items = $q->paginate(9)->withQueryString();
+        $items = $q->paginate($perPage)->withQueryString();
+        $searchService->appendSnippets($items->getCollection(), $searchContext);
         $totals = [
             'all' => SopDocument::query()->count(),
             'active' => SopDocument::query()->where('status', 'active')->count(),
@@ -70,7 +69,7 @@ class SopManagementController extends Controller
         ]);
     }
 
-    public function statDetails(Request $request)
+    public function statDetails(Request $request, SopSearchService $searchService)
     {
         $validated = $request->validate([
             'stat' => ['required', Rule::in(self::DASHBOARD_STAT_KEYS)],
@@ -79,11 +78,14 @@ class SopManagementController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:sop_categories,id'],
             'status' => ['nullable', Rule::in(self::DASHBOARD_STATUS_KEYS)],
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:10', 'max:50'],
+            'per_page' => ['nullable', 'integer', Rule::in(self::PER_PAGE_OPTIONS)],
         ]);
+
+        $searchContext = $searchService->buildContext($validated['search'] ?? null);
 
         $baseQuery = SopDocument::query();
         $this->applyDashboardStatFilters($baseQuery, $validated);
+        $searchService->applyFilters($baseQuery, $searchContext);
 
         $query = (clone $baseQuery)
             ->select([
@@ -102,8 +104,9 @@ class SopManagementController extends Controller
                 'pic:id,name',
             ])
             ->orderByDesc('updated_at');
+        $searchService->applyRanking($query, $searchContext);
 
-        $perPage = (int) ($validated['per_page'] ?? 10);
+        $perPage = (int) ($validated['per_page'] ?? self::PER_PAGE_OPTIONS[0]);
         $rows = $query->paginate($perPage)->withQueryString();
 
         $divisionSummary = (clone $baseQuery)
@@ -175,14 +178,6 @@ class SopManagementController extends Controller
 
     private function applyDashboardStatFilters(Builder $query, array $validated): void
     {
-        if (!empty($validated['search'])) {
-            $search = trim((string) $validated['search']);
-            $query->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
-
         if (!empty($validated['department_id'])) {
             $query->where('department_id', (int) $validated['department_id']);
         }
@@ -201,8 +196,10 @@ class SopManagementController extends Controller
         }
     }
 
-    public function index(Request $request)
+    public function index(Request $request, SopSearchService $searchService)
     {
+        $perPage = $this->resolvePerPage($request, self::PER_PAGE_OPTIONS[0]);
+
         $q = SopDocument::query()
             ->with(['category', 'department', 'pic', 'tags'])
             ->orderByDesc('updated_at');
@@ -219,16 +216,13 @@ class SopManagementController extends Controller
             $q->where('category_id', $request->integer('category_id'));
         }
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->trim()->value();
-            $q->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
+        $searchContext = $searchService->applyToQuery($q, $request->input('search'));
+
+        $items = $q->paginate($perPage)->withQueryString();
+        $searchService->appendSnippets($items->getCollection(), $searchContext);
 
         return view('admin.sop.index', [
-            'items' => $q->paginate(15)->withQueryString(),
+            'items' => $items,
             'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
             'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
             'sourceApps' => SopSourceApp::query()->where('active', true)->orderBy('name')->get(),
@@ -236,7 +230,7 @@ class SopManagementController extends Controller
         ]);
     }
 
-    public function export(Request $request)
+    public function export(Request $request, SopSearchService $searchService)
     {
         $q = SopDocument::query()
             ->with(['category', 'department', 'pic'])
@@ -254,13 +248,7 @@ class SopManagementController extends Controller
             $q->where('category_id', $request->integer('category_id'));
         }
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->trim()->value();
-            $q->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
+        $searchService->applyToQuery($q, $request->input('search'), false);
 
         $headers = [
             'SOP Code',
@@ -463,6 +451,17 @@ class SopManagementController extends Controller
 
         return redirect()->route('admin.sop.index')
             ->with('success', count($ids).' SOP deleted.');
+    }
+
+    private function resolvePerPage(Request $request, int $default): int
+    {
+        $perPage = (int) $request->integer('per_page', $default);
+
+        if (!in_array($perPage, self::PER_PAGE_OPTIONS, true)) {
+            return $default;
+        }
+
+        return $perPage;
     }
 
     private function syncTags(SopDocument $document, ?string $tagsInput): void

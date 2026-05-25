@@ -37,4 +37,12 @@ return [
         'sync_password' => (bool) env('KEP_SYNC_PASSWORD', false),
     ],
 
+    'n8n' => [
+        'chat_enabled' => env('N8N_CHAT_ENABLED', true),
+        'chat_webhook_url' => env('N8N_CHAT_WEBHOOK_URL'),
+        'chat_title' => env('N8N_CHAT_TITLE', 'KMS Assistant'),
+        'chat_subtitle' => env('N8N_CHAT_SUBTITLE', 'Ask anything about SOP and KMS.'),
+        'chat_welcome_message' => env('N8N_CHAT_WELCOME_MESSAGE', 'Hi! Need help with KMS today?'),
+    ],
+
 ];

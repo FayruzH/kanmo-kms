@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   @vite(['resources/css/app.css', 'resources/js/app.js'])
+  @stack('styles')
   <style>
     @media (min-width: 993px) {
       body.kms-density-80.kms-density-zoom .kms-shell {
@@ -87,8 +88,11 @@
     }
   </style>
 </head>
-<body class="{{ auth()->check() ? 'kms-density-80' : '' }}">
-  @if(auth()->check() && auth()->user()->role === 'admin' && !request()->routeIs('employee.*'))
+
+
+
+<body class="{{ request()->routeIs('admin.*') || request()->routeIs('employee.*') || request()->routeIs('public.*') || request()->routeIs('dashboard') ? 'kms-density-80' : '' }}">
+  @if(request()->routeIs('admin.*'))
     <div class="kms-shell kms-can-collapse">
       <aside class="kms-sidebar border-end">
         <div class="kms-brand">
@@ -121,23 +125,33 @@
         </nav>
 
         <div class="kms-user">
-          <details class="kms-profile-menu">
-            <summary class="kms-profile-trigger">
-              <div class="kms-user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-              <div class="kms-user-meta">
-                <div class="fw-semibold">{{ auth()->user()->name }}</div>
-                <div class="small text-secondary">admin</div>
+          @auth
+            <details class="kms-profile-menu">
+              <summary class="kms-profile-trigger">
+                <div class="kms-user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+                <div class="kms-user-meta">
+                  <div class="fw-semibold">{{ auth()->user()->name }}</div>
+                  <div class="small text-secondary">admin</div>
+                </div>
+                <i class="bi bi-chevron-up kms-profile-chevron"></i>
+              </summary>
+              <div class="kms-profile-dropdown">
+                <a href="{{ route('profile.edit') }}" class="kms-profile-item"><i class="bi bi-person"></i>Profile</a>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                  @csrf
+                  <button type="submit" class="kms-profile-item kms-profile-logout"><i class="bi bi-box-arrow-right"></i>Logout</button>
+                </form>
               </div>
-              <i class="bi bi-chevron-up kms-profile-chevron"></i>
-            </summary>
-            <div class="kms-profile-dropdown">
-              <a href="{{ route('profile.edit') }}" class="kms-profile-item"><i class="bi bi-person"></i>Profile</a>
-              <form method="POST" action="{{ route('logout') }}" class="m-0">
-                @csrf
-                <button type="submit" class="kms-profile-item kms-profile-logout"><i class="bi bi-box-arrow-right"></i>Logout</button>
-              </form>
+            </details>
+          @else
+            <div class="kms-profile-trigger">
+              <div class="kms-user-avatar">A</div>
+              <div class="kms-user-meta">
+                <div class="fw-semibold">Admin Area</div>
+                <div class="small text-secondary">Public Access Enabled</div>
+              </div>
             </div>
-          </details>
+          @endauth
         </div>
       </aside>
 
@@ -158,7 +172,7 @@
         </main>
       </div>
     </div>
-  @elseif(auth()->check() && auth()->user()->role !== 'admin' && !request()->routeIs('admin.*'))
+  @elseif(!request()->routeIs('admin.*'))
     <div class="kms-shell kms-can-collapse">
       <aside class="kms-sidebar border-end">
         <div class="kms-brand">
@@ -173,26 +187,39 @@
           <a href="{{ route('employee.dashboard') }}" class="kms-nav-link {{ request()->routeIs('employee.dashboard') || request()->routeIs('employee.sop.show') ? 'active' : '' }}">
             <i class="bi bi-grid"></i><span class="kms-nav-text">Dashboard</span>
           </a>
+          <a href="{{ route('employee.chatbot') }}" class="kms-nav-link {{ request()->routeIs('employee.chatbot') ? 'active' : '' }}">
+            <i class="bi bi-robot"></i><span class="kms-nav-text">Chatbot</span>
+          </a>
         </nav>
 
         <div class="kms-user">
-          <details class="kms-profile-menu">
-            <summary class="kms-profile-trigger">
-              <div class="kms-user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-              <div class="kms-user-meta">
-                <div class="fw-semibold">{{ auth()->user()->name }}</div>
-                <div class="small text-secondary">{{ auth()->user()->role }}</div>
+          @auth
+            <details class="kms-profile-menu">
+              <summary class="kms-profile-trigger">
+                <div class="kms-user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+                <div class="kms-user-meta">
+                  <div class="fw-semibold">{{ auth()->user()->name }}</div>
+                  <div class="small text-secondary">{{ auth()->user()->role }}</div>
+                </div>
+                <i class="bi bi-chevron-up kms-profile-chevron"></i>
+              </summary>
+              <div class="kms-profile-dropdown">
+                <a href="{{ route('profile.edit') }}" class="kms-profile-item"><i class="bi bi-person"></i>Profile</a>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                  @csrf
+                  <button type="submit" class="kms-profile-item kms-profile-logout"><i class="bi bi-box-arrow-right"></i>Logout</button>
+                </form>
               </div>
-              <i class="bi bi-chevron-up kms-profile-chevron"></i>
-            </summary>
-            <div class="kms-profile-dropdown">
-              <a href="{{ route('profile.edit') }}" class="kms-profile-item"><i class="bi bi-person"></i>Profile</a>
-              <form method="POST" action="{{ route('logout') }}" class="m-0">
-                @csrf
-                <button type="submit" class="kms-profile-item kms-profile-logout"><i class="bi bi-box-arrow-right"></i>Logout</button>
-              </form>
+            </details>
+          @else
+            <div class="kms-profile-trigger">
+              <div class="kms-user-avatar">G</div>
+              <div class="kms-user-meta">
+                <div class="fw-semibold">Guest User</div>
+                <div class="small text-secondary">Public Access Enabled</div>
+              </div>
             </div>
-          </details>
+          @endauth
         </div>
       </aside>
 
@@ -226,7 +253,7 @@
               <button class="btn btn-sm btn-outline-secondary">Logout</button>
             </form>
           @else
-            <a class="btn btn-sm btn-outline-primary" href="{{ route('login') }}">Login</a>
+            <span class="small opacity-75">Public Access Enabled</span>
           @endauth
         </div>
       </div>
@@ -237,6 +264,7 @@
   @endif
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  @stack('scripts')
   <script>
     (function () {
       const saved = localStorage.getItem('kms_theme') || 'light';

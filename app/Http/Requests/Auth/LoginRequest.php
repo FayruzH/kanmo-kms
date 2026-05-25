@@ -44,7 +44,12 @@ class LoginRequest extends FormRequest
 
         $nip = User::normalizeNip((string) $this->input('nip'));
 
-        if (! Auth::attempt(['nip' => $nip, 'password' => (string) $this->input('password')], $this->boolean('remember'))) {
+        if (! Auth::attempt([
+            'nip' => $nip,
+            'password' => (string) $this->input('password'),
+            'role' => 'admin',
+            'active' => true,
+        ], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

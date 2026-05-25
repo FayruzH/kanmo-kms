@@ -8,9 +8,13 @@ use App\Models\SopCategory;
 use App\Models\SopDepartment;
 use App\Models\SopDocument;
 use App\Models\SopLike;
+use App\Models\User;
 use App\Services\SopActivityService;
+use App\Services\SopSearchService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SopPortalController extends Controller
@@ -18,7 +22,7 @@ class SopPortalController extends Controller
     private const DASHBOARD_STAT_KEYS = ['all', 'active', 'expiring_soon', 'expired'];
     private const DASHBOARD_STATUS_KEYS = ['active', 'expiring_soon', 'expired'];
 
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, SopSearchService $searchService)
     {
         $query = SopDocument::query()
             ->with(['category', 'department', 'pic', 'tags'])
@@ -30,13 +34,7 @@ class SopPortalController extends Controller
             ->whereIn('status', ['active', 'expiring_soon', 'expired'])
             ->orderByDesc('updated_at');
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->value();
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
+        $searchContext = $searchService->applyToQuery($query, $request->input('search'));
 
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->integer('department_id'));
@@ -50,8 +48,11 @@ class SopPortalController extends Controller
             $query->where('status', $request->string('status')->value());
         }
 
+        $items = $query->paginate(9)->withQueryString();
+        $searchService->appendSnippets($items->getCollection(), $searchContext);
+
         return view('employee.dashboard', [
-            'items' => $query->paginate(9)->withQueryString(),
+            'items' => $items,
             'totals' => [
                 'all' => SopDocument::query()->count(),
                 'active' => SopDocument::query()->where('status', 'active')->count(),
@@ -63,7 +64,7 @@ class SopPortalController extends Controller
         ]);
     }
 
-    public function statDetails(Request $request)
+    public function statDetails(Request $request, SopSearchService $searchService)
     {
         $validated = $request->validate([
             'stat' => ['required', Rule::in(self::DASHBOARD_STAT_KEYS)],
@@ -75,7 +76,30 @@ class SopPortalController extends Controller
             'per_page' => ['nullable', 'integer', 'min:10', 'max:50'],
         ]);
 
-        $query = SopDocument::query()
+        $searchContext = $searchService->buildContext($validated['search'] ?? null);
+
+        $baseQuery = SopDocument::query()->whereIn('status', self::DASHBOARD_STATUS_KEYS);
+
+        if (!empty($validated['department_id'])) {
+            $baseQuery->where('department_id', (int) $validated['department_id']);
+        }
+
+        if (!empty($validated['category_id'])) {
+            $baseQuery->where('category_id', (int) $validated['category_id']);
+        }
+
+        if (!empty($validated['status'])) {
+            $baseQuery->where('status', (string) $validated['status']);
+        }
+
+        $stat = (string) $validated['stat'];
+        if ($stat !== 'all') {
+            $baseQuery->where('status', $stat);
+        }
+
+        $searchService->applyFilters($baseQuery, $searchContext);
+
+        $query = (clone $baseQuery)
             ->select([
                 'id',
                 'title',
@@ -91,36 +115,45 @@ class SopPortalController extends Controller
                 'category:id,name',
                 'pic:id,name',
             ])
-            ->whereIn('status', self::DASHBOARD_STATUS_KEYS)
             ->orderByDesc('updated_at');
-
-        if (!empty($validated['search'])) {
-            $search = trim((string) $validated['search']);
-            $query->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('summary', 'like', '%' . $search . '%');
-            });
-        }
-
-        if (!empty($validated['department_id'])) {
-            $query->where('department_id', (int) $validated['department_id']);
-        }
-
-        if (!empty($validated['category_id'])) {
-            $query->where('category_id', (int) $validated['category_id']);
-        }
-
-        if (!empty($validated['status'])) {
-            $query->where('status', (string) $validated['status']);
-        }
-
-        $stat = (string) $validated['stat'];
-        if ($stat !== 'all') {
-            $query->where('status', $stat);
-        }
+        $searchService->applyRanking($query, $searchContext);
 
         $perPage = (int) ($validated['per_page'] ?? 10);
         $rows = $query->paginate($perPage)->withQueryString();
+
+        $divisionSummary = (clone $baseQuery)
+            ->leftJoin('sop_categories as summary_category', 'summary_category.id', '=', 'sop_documents.category_id')
+            ->selectRaw('summary_category.id as id')
+            ->selectRaw("COALESCE(summary_category.name, '-') as label")
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('summary_category.id')
+            ->groupByRaw("COALESCE(summary_category.name, '-')")
+            ->orderByDesc('total')
+            ->orderBy('label')
+            ->get()
+            ->map(static fn ($row): array => [
+                'id' => $row->id !== null ? (int) $row->id : null,
+                'label' => (string) $row->label,
+                'total' => (int) $row->total,
+            ])
+            ->values();
+
+        $departmentSummary = (clone $baseQuery)
+            ->leftJoin('sop_departments as summary_department', 'summary_department.id', '=', 'sop_documents.department_id')
+            ->selectRaw('summary_department.id as id')
+            ->selectRaw("COALESCE(summary_department.name, '-') as label")
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('summary_department.id')
+            ->groupByRaw("COALESCE(summary_department.name, '-')")
+            ->orderByDesc('total')
+            ->orderBy('label')
+            ->get()
+            ->map(static fn ($row): array => [
+                'id' => $row->id !== null ? (int) $row->id : null,
+                'label' => (string) $row->label,
+                'total' => (int) $row->total,
+            ])
+            ->values();
 
         return response()->json([
             'data' => $rows->getCollection()->map(static function (SopDocument $sop): array {
@@ -140,6 +173,10 @@ class SopPortalController extends Controller
                     'detail_url' => route('employee.sop.show', $sop),
                 ];
             })->values(),
+            'summaries' => [
+                'by_division' => $divisionSummary,
+                'by_department' => $departmentSummary,
+            ],
             'meta' => [
                 'current_page' => $rows->currentPage(),
                 'last_page' => $rows->lastPage(),
@@ -151,7 +188,7 @@ class SopPortalController extends Controller
         ]);
     }
 
-    public function show(SopDocument $sop, SopActivityService $activityService)
+    public function show(Request $request, SopDocument $sop, SopActivityService $activityService)
     {
         $sop->load(['category', 'department', 'pic', 'tags', 'comments.user'])
             ->loadCount([
@@ -159,20 +196,30 @@ class SopPortalController extends Controller
                 'comments',
                 'activityLogs as views_count',
             ]);
-        $activityService->log($sop->id, auth()->id(), 'view', request()->userAgent());
+        $userId = auth()->id();
+        if ($userId) {
+            $activityService->log($sop->id, $userId, 'view', request()->userAgent());
+        }
+
+        $viewer = $this->resolveInteractionUser($request, false);
 
         return view('employee.sop.show', [
             'sop' => $sop,
-            'liked' => SopLike::query()
-                ->where('sop_id', $sop->id)
-                ->where('user_id', auth()->id())
-                ->exists(),
+            'liked' => $viewer
+                ? SopLike::query()
+                    ->where('sop_id', $sop->id)
+                    ->where('user_id', $viewer->id)
+                    ->exists()
+                : false,
         ]);
     }
 
     public function open(SopDocument $sop, SopActivityService $activityService)
     {
-        $activityService->log($sop->id, auth()->id(), 'open', request()->userAgent());
+        $userId = auth()->id();
+        if ($userId) {
+            $activityService->log($sop->id, $userId, 'open', request()->userAgent());
+        }
 
         if ($sop->type === 'url' && $sop->url) {
             return redirect()->away($sop->url);
@@ -186,27 +233,37 @@ class SopPortalController extends Controller
 
     public function download(SopDocument $sop, SopActivityService $activityService)
     {
-        $activityService->log($sop->id, auth()->id(), 'download', request()->userAgent());
+        $userId = auth()->id();
+        if ($userId) {
+            $activityService->log($sop->id, $userId, 'download', request()->userAgent());
+        }
 
         abort_unless($sop->file_path, 404, 'SOP file not found.');
         return Storage::disk('public')->download($sop->file_path, $sop->title . '.pdf');
     }
 
-    public function like(SopDocument $sop)
+    public function like(Request $request, SopDocument $sop)
     {
+        $actor = $this->resolveInteractionUser($request);
+
         SopLike::query()->firstOrCreate([
             'sop_id' => $sop->id,
-            'user_id' => auth()->id(),
+            'user_id' => $actor->id,
         ]);
 
         return back()->with('success', 'SOP liked.');
     }
 
-    public function unlike(SopDocument $sop)
+    public function unlike(Request $request, SopDocument $sop)
     {
+        $actor = $this->resolveInteractionUser($request, false);
+        if (!$actor) {
+            return back()->with('warning', 'No like found for this visitor session.');
+        }
+
         SopLike::query()
             ->where('sop_id', $sop->id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', $actor->id)
             ->delete();
 
         return back()->with('success', 'Like removed.');
@@ -216,14 +273,70 @@ class SopPortalController extends Controller
     {
         $data = $request->validate([
             'comment_text' => ['required', 'string', 'max:2000'],
+            'guest_name' => ['nullable', 'string', 'max:80'],
         ]);
+
+        $actor = $this->resolveInteractionUser($request, true, $data['guest_name'] ?? null);
 
         SopComment::query()->create([
             'sop_id' => $sop->id,
-            'user_id' => auth()->id(),
+            'user_id' => $actor->id,
             'comment_text' => $data['comment_text'],
         ]);
 
         return back()->with('success', 'Comment submitted.');
+    }
+
+    private function resolveInteractionUser(Request $request, bool $createIfMissing = true, ?string $guestName = null): ?User
+    {
+        if ($request->user()) {
+            return $request->user();
+        }
+
+        $sessionKey = 'public_interaction_user_id';
+        $sessionUserId = $request->session()->get($sessionKey);
+        if ($sessionUserId) {
+            $user = User::query()->find((int) $sessionUserId);
+            if ($user) {
+                if ($guestName) {
+                    $user->name = trim($guestName);
+                    $user->save();
+                }
+
+                return $user;
+            }
+        }
+
+        if (!$createIfMissing) {
+            return null;
+        }
+
+        $guestDisplayName = trim((string) ($guestName ?? 'Public Guest'));
+        if ($guestDisplayName === '') {
+            $guestDisplayName = 'Public Guest';
+        }
+
+        $guestId = (string) Str::uuid();
+        $user = User::query()->create([
+            'name' => Str::limit($guestDisplayName, 80, ''),
+            'email' => 'public-guest-' . $guestId . '@kms.local',
+            'nip' => $this->generateGuestNip(),
+            'password' => Hash::make(Str::random(32)),
+            'role' => 'employee',
+            'active' => false,
+        ]);
+
+        $request->session()->put($sessionKey, $user->id);
+
+        return $user;
+    }
+
+    private function generateGuestNip(): string
+    {
+        do {
+            $candidate = (string) random_int(1000000000, 9999999999);
+        } while (User::query()->where('nip', $candidate)->exists());
+
+        return $candidate;
     }
 }

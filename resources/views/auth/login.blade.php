@@ -52,7 +52,7 @@
                         <div class="alert alert-success py-2 mb-3">{{ session('status') }}</div>
                     @endif
 
-                    <form method="POST" action="{{ route('login') }}" class="kms-auth-form">
+                    <form method="POST" action="{{ Route::has('admin.login.store') ? route('admin.login.store') : url('/login') }}" class="kms-auth-form">
                         @csrf
 
                         <div class="mb-3">

@@ -37,6 +37,31 @@ body {
   }
 }
 
+/*
+ * Modal backdrop focus style (native Bootstrap backdrop).
+ */
+.modal-backdrop.show {
+  background-color: rgba(8, 16, 30, 0.42) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.kms-focus-modal {
+  z-index: 2100;
+}
+
+@media screen and (min-width: 993px) {
+  body.kms-density-80 .modal-backdrop {
+    top: 0 !important;
+    left: -12.5vw !important;
+    width: 125vw !important;
+    height: 125vh !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+}
+
 .btn-primary {
   background-color: var(--kms-primary);
   border-color: var(--kms-primary);

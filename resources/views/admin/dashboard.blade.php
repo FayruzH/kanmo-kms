@@ -3,6 +3,13 @@
 @section('page_title', 'Dashboard')
 
 @section('content')
+@php
+    $perPageOptions = [20, 50, 100, 500, 1000];
+    $selectedPerPage = (int) request('per_page', $perPageOptions[0]);
+    if (!in_array($selectedPerPage, $perPageOptions, true)) {
+        $selectedPerPage = $perPageOptions[0];
+    }
+@endphp
 <div class="container-fluid px-0">
     <section class="kms-hero mb-4">
         <h2>Knowledge Management System</h2>
@@ -10,9 +17,10 @@
             Find, access, and manage all Standard Operating Procedures in one place.
         </p>
         <form method="GET" action="{{ route('admin.overview') }}" class="kms-searchbox" data-auto-submit>
+            <input type="hidden" name="per_page" value="{{ $selectedPerPage }}">
             <div class="input-group">
                 <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
-                <input type="text" name="search" class="form-control" placeholder="Search SOPs by title, tag, or keyword..." value="{{ request('search') }}" data-auto-submit-input>
+                <input type="text" name="search" class="form-control" placeholder="Search title, summary, tags, division, department, or source (ID/EN keywords)..." value="{{ request('search') }}" data-auto-submit-input>
                 <button class="btn btn-primary rounded-3 px-3" type="submit">Search</button>
             </div>
         </form>
@@ -63,6 +71,7 @@
 
     <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
         <form method="GET" action="{{ route('admin.overview') }}" class="row g-2 flex-grow-1" data-auto-submit>
+            <input type="hidden" name="per_page" value="{{ $selectedPerPage }}">
             <div class="col-md-3">
                 <select name="category_id" class="form-select" data-auto-submit-select>
                     <option value="">All Divisions</option>
@@ -131,7 +140,8 @@
                         </div>
                         <span class="status-pill status-{{ $item->status }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
                     </div>
-                    <p class="text-secondary mb-3 flex-grow-1">{{ \Illuminate\Support\Str::limit($item->summary ?: 'No summary available.', 130) }}</p>
+                    @php $snippet = $item->search_snippet ?? null; @endphp
+                    <p class="text-secondary mb-3 flex-grow-1">{{ \Illuminate\Support\Str::limit($snippet ?: ($item->summary ?: 'No summary available.'), 130) }}</p>
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         @forelse($item->tags->take(4) as $tag)
                             <span class="kms-chip">{{ $tag->name }}</span>
@@ -156,10 +166,30 @@
         @endforelse
     </div>
 
-    <div class="mt-3">{{ $items->links() }}</div>
+    <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <form method="GET" action="{{ route('admin.overview') }}" class="d-flex align-items-center gap-2">
+            @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                @if (is_array($value))
+                    @foreach ($value as $arrayValue)
+                        <input type="hidden" name="{{ $key }}[]" value="{{ $arrayValue }}">
+                    @endforeach
+                @else
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endif
+            @endforeach
+            <label for="perPageSelectOverview" class="small text-secondary mb-0">Show per page</label>
+            <select id="perPageSelectOverview" name="per_page" class="form-select form-select-sm" style="width: 110px;" onchange="this.form.submit()">
+                @foreach ($perPageOptions as $option)
+                    <option value="{{ $option }}" @selected($selectedPerPage === $option)>{{ $option }}</option>
+                @endforeach
+            </select>
+        </form>
+
+        <div>{{ $items->links() }}</div>
+    </div>
 </div>
 
-<div class="modal fade" id="statDetailModal" tabindex="-1" aria-labelledby="statDetailModalLabel" aria-hidden="true">
+<div class="modal fade kms-focus-modal" id="statDetailModal" tabindex="-1" aria-labelledby="statDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header">
@@ -212,7 +242,9 @@
             return;
         }
 
-        const modal = bootstrapApi.Modal.getOrCreateInstance(modalElement);
+        const modal = bootstrapApi.Modal.getOrCreateInstance(modalElement, {
+            backdrop: true,
+        });
         const titleElement = document.getElementById('statDetailModalLabel');
         const loadingElement = document.getElementById('statDetailLoading');
         const emptyElement = document.getElementById('statDetailEmpty');
@@ -385,6 +417,27 @@
             emptyElement.classList.remove('d-none');
         }
 
+        function applyBackdropFocus() {
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (!backdrop) {
+                return;
+            }
+
+            backdrop.style.backgroundColor = 'rgba(8, 16, 30, 0.42)';
+            backdrop.style.opacity = '1';
+            backdrop.style.backdropFilter = 'blur(4px)';
+            backdrop.style.webkitBackdropFilter = 'blur(4px)';
+
+            if (document.body.classList.contains('kms-density-80')) {
+                backdrop.style.top = '-50vh';
+                backdrop.style.left = '-50vw';
+                backdrop.style.width = '200vw';
+                backdrop.style.height = '200vh';
+                backdrop.style.maxWidth = 'none';
+                backdrop.style.maxHeight = 'none';
+            }
+        }
+
         async function loadDetailCards() {
             setLoadingState();
 
@@ -392,6 +445,7 @@
                 const params = new URLSearchParams(window.location.search);
                 params.delete('category_id');
                 params.delete('department_id');
+                params.delete('per_page');
                 params.set('stat', state.statKey);
 
                 const response = await fetch(endpoint + '?' + params.toString(), {
@@ -415,6 +469,7 @@
         function openModalForCard(card) {
             setContext(card);
             modal.show();
+            window.requestAnimationFrame(applyBackdropFocus);
             loadDetailCards();
         }
 
@@ -438,6 +493,8 @@
                 item.classList.remove('kms-stat-selected');
             });
         });
+
+        modalElement.addEventListener('shown.bs.modal', applyBackdropFocus);
 
         summaryWrapElement?.addEventListener('click', function (event) {
             const trigger = event.target.closest('[data-dashboard-filter-key][data-dashboard-filter-value]');

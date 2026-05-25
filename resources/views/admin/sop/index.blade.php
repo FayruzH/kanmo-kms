@@ -3,6 +3,13 @@
 @section('page_title', 'SOP Management')
 
 @section('content')
+@php
+    $perPageOptions = [20, 50, 100, 500, 1000];
+    $selectedPerPage = (int) request('per_page', $perPageOptions[0]);
+    if (!in_array($selectedPerPage, $perPageOptions, true)) {
+        $selectedPerPage = $perPageOptions[0];
+    }
+@endphp
 <div class="container-fluid px-0">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
@@ -33,13 +40,15 @@
     </form>
 
     <form method="GET" action="{{ route('admin.sop.index') }}" class="card border-0 shadow-sm rounded-4 mb-3" data-auto-submit>
+        <input type="hidden" name="per_page" value="{{ $selectedPerPage }}">
         <div class="card-body p-3">
             <div class="row g-2 align-items-end">
                 <div class="col-12 col-lg-6">
                     <label class="form-label small text-secondary mb-1">Search</label>
                     <div class="input-group kms-search-line">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Search title or summary..." value="{{ request('search') }}" data-auto-submit-input>
+                        <input type="text" name="search" class="form-control" placeholder="Search title, summary, tags, division, department, source (ID/EN)..." value="{{ request('search') }}" data-auto-submit-input>
+                        <button type="submit" class="btn btn-outline-primary">Search</button>
                     </div>
                 </div>
                 <div class="col-6 col-lg-2">
@@ -75,6 +84,9 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small text-secondary">{{ number_format($items->total()) }} SOP found</span>
+        @if (filled(request('search')))
+            <span class="badge text-bg-light border">Keyword: "{{ request('search') }}"</span>
+        @endif
     </div>
 
     <div class="kms-table-wrap">
@@ -126,7 +138,27 @@
         </table>
     </div>
 
-    <div class="mt-3">{{ $items->links() }}</div>
+    <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <form method="GET" action="{{ route('admin.sop.index') }}" class="d-flex align-items-center gap-2">
+            @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                @if (is_array($value))
+                    @foreach ($value as $arrayValue)
+                        <input type="hidden" name="{{ $key }}[]" value="{{ $arrayValue }}">
+                    @endforeach
+                @else
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endif
+            @endforeach
+            <label for="perPageSelectSopIndex" class="small text-secondary mb-0">Show per page</label>
+            <select id="perPageSelectSopIndex" name="per_page" class="form-select form-select-sm" style="width: 110px;" onchange="this.form.submit()">
+                @foreach ($perPageOptions as $option)
+                    <option value="{{ $option }}" @selected($selectedPerPage === $option)>{{ $option }}</option>
+                @endforeach
+            </select>
+        </form>
+
+        <div>{{ $items->links() }}</div>
+    </div>
 </div>
 
 <script>

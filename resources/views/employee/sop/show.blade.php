@@ -11,6 +11,9 @@
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
+    @if(session('warning'))
+        <div class="alert alert-warning">{{ session('warning') }}</div>
+    @endif
 
     <div class="kms-detail-card mb-3">
         <div class="kms-detail-hero">
@@ -91,8 +94,13 @@
 
         <form method="POST" action="{{ route('employee.sop.comment', $sop) }}">
             @csrf
+            @guest
+                <div class="mb-2">
+                    <input type="text" name="guest_name" class="form-control" maxlength="80" placeholder="Your name (optional)" value="{{ old('guest_name') }}">
+                </div>
+            @endguest
             <div class="input-group">
-                <textarea name="comment_text" class="form-control" rows="2" placeholder="Write a comment..." required></textarea>
+                <textarea name="comment_text" class="form-control" rows="2" placeholder="Write a comment..." required>{{ old('comment_text') }}</textarea>
                 <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i></button>
             </div>
         </form>

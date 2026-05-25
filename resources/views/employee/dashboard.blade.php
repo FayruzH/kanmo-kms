@@ -10,7 +10,7 @@
         <form method="GET" action="{{ route('employee.dashboard') }}" class="kms-searchbox" data-auto-submit>
             <div class="input-group">
                 <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
-                <input type="text" name="search" class="form-control" placeholder="Search SOPs by title, tag, or keyword..." value="{{ request('search') }}" data-auto-submit-input>
+                <input type="text" name="search" class="form-control" placeholder="Search title, summary, tags, division, department, or source (ID/EN keywords)..." value="{{ request('search') }}" data-auto-submit-input>
                 <button class="btn btn-primary rounded-3 px-3" type="submit">Search</button>
             </div>
         </form>
@@ -123,7 +123,8 @@
                         </div>
                         <span class="status-pill status-{{ $item->status }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
                     </div>
-                    <p class="text-secondary mb-3 flex-grow-1">{{ \Illuminate\Support\Str::limit($item->summary ?: 'No summary available.', 130) }}</p>
+                    @php $snippet = $item->search_snippet ?? null; @endphp
+                    <p class="text-secondary mb-3 flex-grow-1">{{ \Illuminate\Support\Str::limit($snippet ?: ($item->summary ?: 'No summary available.'), 130) }}</p>
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         @forelse($item->tags->take(4) as $tag)
                             <span class="kms-chip">{{ $tag->name }}</span>
@@ -165,7 +166,7 @@
     <div class="mt-3">{{ $items->links() }}</div>
 </div>
 
-<div class="modal fade" id="statDetailModal" tabindex="-1" aria-labelledby="statDetailModalLabel" aria-hidden="true">
+<div class="modal fade kms-focus-modal" id="statDetailModal" tabindex="-1" aria-labelledby="statDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header">
@@ -173,6 +174,27 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
+                <div id="statDetailContext" class="kms-detail-context is-all">
+                    <span class="kms-detail-context-icon">
+                        <i id="statDetailContextIcon" class="bi bi-file-earmark-text"></i>
+                    </span>
+                    <div class="d-flex flex-column">
+                        <span id="statDetailContextLabel" class="kms-detail-context-label">Total SOPs</span>
+                        <span class="kms-detail-context-value"><span id="statDetailContextCount">0</span> SOP</span>
+                    </div>
+                </div>
+                <div id="statDetailSummaryWrap" class="p-3 border-bottom d-none">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <div class="small fw-semibold text-uppercase text-secondary mb-2">SOP per Division</div>
+                            <div id="statDetailDivisionCards" class="d-grid gap-2"></div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <div class="small fw-semibold text-uppercase text-secondary mb-2">SOP per Department</div>
+                            <div id="statDetailDepartmentCards" class="d-grid gap-2"></div>
+                        </div>
+                    </div>
+                </div>
                 <div id="statDetailLoading" class="p-4 text-center text-secondary small d-none">
                     Loading SOP details...
                 </div>
@@ -182,68 +204,50 @@
                 <div id="statDetailError" class="p-4 text-center text-danger small d-none">
                     Failed to load SOP details. Please try again.
                 </div>
-                <div id="statDetailTableWrap" class="table-responsive d-none">
-                    <table class="table kms-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>SOP ID</th>
-                                <th>Title</th>
-                                <th>Division</th>
-                                <th>Department</th>
-                                <th>PIC</th>
-                                <th>Status</th>
-                                <th>Expiry Date</th>
-                                <th>Last Updated</th>
-                                <th style="width:90px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statDetailBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer justify-content-between">
-                <div id="statDetailMeta" class="small text-secondary">-</div>
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-secondary" id="statDetailPrev">Prev</button>
-                    <button type="button" class="btn btn-outline-secondary" id="statDetailNext">Next</button>
-                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    (function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        const bootstrapApi = window.bootstrap;
         const endpoint = @json(route('employee.dashboard.stats-detail'));
         const cards = Array.from(document.querySelectorAll('.kms-stat-clickable[data-stat-key]'));
         const modalElement = document.getElementById('statDetailModal');
-        if (!modalElement || cards.length === 0 || typeof bootstrap === 'undefined') {
+        if (!modalElement || cards.length === 0 || !bootstrapApi || !bootstrapApi.Modal) {
             return;
         }
 
-        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        const modal = bootstrapApi.Modal.getOrCreateInstance(modalElement, {
+            backdrop: true,
+        });
         const titleElement = document.getElementById('statDetailModalLabel');
         const loadingElement = document.getElementById('statDetailLoading');
         const emptyElement = document.getElementById('statDetailEmpty');
         const errorElement = document.getElementById('statDetailError');
-        const tableWrapElement = document.getElementById('statDetailTableWrap');
-        const bodyElement = document.getElementById('statDetailBody');
-        const metaElement = document.getElementById('statDetailMeta');
-        const prevButton = document.getElementById('statDetailPrev');
-        const nextButton = document.getElementById('statDetailNext');
-
-        const statusClassMap = {
-            active: 'status-active',
-            expiring_soon: 'status-expiring_soon',
-            expired: 'status-expired',
-            archived: 'status-archived',
-        };
-
+        const contextElement = document.getElementById('statDetailContext');
+        const contextLabelElement = document.getElementById('statDetailContextLabel');
+        const contextCountElement = document.getElementById('statDetailContextCount');
+        const contextIconElement = document.getElementById('statDetailContextIcon');
+        const summaryWrapElement = document.getElementById('statDetailSummaryWrap');
+        const divisionCardsElement = document.getElementById('statDetailDivisionCards');
+        const departmentCardsElement = document.getElementById('statDetailDepartmentCards');
         const state = {
             statKey: 'all',
             statLabel: 'Total SOPs',
-            currentPage: 1,
-            lastPage: 1,
+        };
+        const contextClassMap = {
+            all: 'is-all',
+            active: 'is-active',
+            expiring_soon: 'is-expiring',
+            expired: 'is-expired',
+        };
+        const contextIconMap = {
+            all: 'bi-file-earmark-text',
+            active: 'bi-check-circle',
+            expiring_soon: 'bi-clock',
+            expired: 'bi-exclamation-triangle',
         };
 
         function escapeHtml(value) {
@@ -261,82 +265,164 @@
             errorElement.classList.add('d-none');
         }
 
-        function setLoadingState() {
-            hideFeedback();
-            loadingElement.classList.remove('d-none');
-            tableWrapElement.classList.add('d-none');
-            bodyElement.innerHTML = '';
-            metaElement.textContent = 'Loading...';
-            prevButton.disabled = true;
-            nextButton.disabled = true;
+        function formatCount(value) {
+            const parsed = Number(value || 0);
+            if (!Number.isFinite(parsed)) {
+                return '0';
+            }
+
+            return parsed.toLocaleString('id-ID');
         }
 
-        function setErrorState(message) {
-            hideFeedback();
-            errorElement.textContent = message;
-            errorElement.classList.remove('d-none');
-            tableWrapElement.classList.add('d-none');
-            bodyElement.innerHTML = '';
-            metaElement.textContent = 'Failed to load data';
-            prevButton.disabled = true;
-            nextButton.disabled = true;
+        function setContext(card) {
+            if (!card) {
+                return;
+            }
+
+            const statKey = card.dataset.statKey || 'all';
+            const statLabel = card.dataset.statLabel || 'SOP';
+            const statCount = card.querySelector('.kms-stat-value')?.textContent?.trim() || '0';
+
+            state.statKey = statKey;
+            state.statLabel = statLabel;
+            titleElement.textContent = 'Detail SOP - ' + state.statLabel;
+
+            if (contextLabelElement) {
+                contextLabelElement.textContent = statLabel;
+            }
+            if (contextCountElement) {
+                contextCountElement.textContent = statCount;
+            }
+            if (contextIconElement) {
+                contextIconElement.className = 'bi ' + (contextIconMap[statKey] || contextIconMap.all);
+            }
+            if (contextElement) {
+                Object.values(contextClassMap).forEach(function (className) {
+                    contextElement.classList.remove(className);
+                });
+                contextElement.classList.add(contextClassMap[statKey] || contextClassMap.all);
+            }
+
+            cards.forEach(function (item) {
+                item.classList.remove('kms-stat-selected');
+            });
+            card.classList.add('kms-stat-selected');
         }
 
-        function setEmptyState() {
-            hideFeedback();
-            emptyElement.classList.remove('d-none');
-            tableWrapElement.classList.add('d-none');
-            bodyElement.innerHTML = '';
+        function clearSummary() {
+            if (!summaryWrapElement) {
+                return;
+            }
+
+            summaryWrapElement.classList.add('d-none');
+            if (divisionCardsElement) {
+                divisionCardsElement.innerHTML = '';
+            }
+            if (departmentCardsElement) {
+                departmentCardsElement.innerHTML = '';
+            }
         }
 
-        function renderRows(rows) {
+        function renderSummaryCards(target, rows, resolveLabel, filterKey) {
+            if (!target) {
+                return;
+            }
+
             if (!Array.isArray(rows) || rows.length === 0) {
+                target.innerHTML = '<div class="small text-secondary">No data</div>';
+                return;
+            }
+
+            target.innerHTML = rows.map(function (row) {
+                const filterValue = row && row.id !== null && row.id !== undefined ? String(row.id) : '';
+                if (filterValue !== '' && filterKey) {
+                    return '<button type="button" class="kms-summary-item kms-summary-item-clickable border rounded-3 px-3 py-2 text-start w-100" data-dashboard-filter-key="' + escapeHtml(filterKey) + '" data-dashboard-filter-value="' + escapeHtml(filterValue) + '">'
+                        + '<span class="small fw-semibold kms-summary-label">' + escapeHtml(resolveLabel(row)) + '</span>'
+                        + '<span class="badge text-bg-light border kms-summary-count">' + escapeHtml(formatCount(row.total)) + '</span>'
+                        + '</button>';
+                }
+
+                return '<div class="kms-summary-item border rounded-3 px-3 py-2">'
+                    + '<span class="small fw-semibold kms-summary-label">' + escapeHtml(resolveLabel(row)) + '</span>'
+                    + '<span class="badge text-bg-light border kms-summary-count">' + escapeHtml(formatCount(row.total)) + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+
+        function renderSummaries(summaries) {
+            if (!summaryWrapElement) {
+                return;
+            }
+
+            const byDivision = Array.isArray(summaries.by_division) ? summaries.by_division : [];
+            const byDepartment = Array.isArray(summaries.by_department) ? summaries.by_department : [];
+            const hasAnySummary = byDivision.length > 0 || byDepartment.length > 0;
+
+            if (!hasAnySummary) {
                 setEmptyState();
                 return;
             }
 
             hideFeedback();
-            tableWrapElement.classList.remove('d-none');
+            summaryWrapElement.classList.remove('d-none');
 
-            bodyElement.innerHTML = rows.map(function (row) {
-                const statusClass = statusClassMap[row.status] || 'status-archived';
-                return '<tr>'
-                    + '<td class="small text-secondary">' + escapeHtml(row.sop_code) + '</td>'
-                    + '<td class="fw-semibold">' + escapeHtml(row.title) + '</td>'
-                    + '<td>' + escapeHtml(row.division) + '</td>'
-                    + '<td>' + escapeHtml(row.department) + '</td>'
-                    + '<td>' + escapeHtml(row.pic) + '</td>'
-                    + '<td><span class="status-pill ' + statusClass + '">' + escapeHtml(row.status_label) + '</span></td>'
-                    + '<td>' + escapeHtml(row.expiry_date_label || '-') + '</td>'
-                    + '<td class="small text-secondary">' + escapeHtml(row.updated_at_label || '-') + '</td>'
-                    + '<td><a href="' + escapeHtml(row.detail_url || '#') + '" class="btn btn-sm btn-light border">Open</a></td>'
-                    + '</tr>';
-            }).join('');
+            renderSummaryCards(divisionCardsElement, byDivision, function (row) {
+                return row.label || '-';
+            }, 'category_id');
+            renderSummaryCards(departmentCardsElement, byDepartment, function (row) {
+                return row.label || '-';
+            }, 'department_id');
         }
 
-        function updatePagination(meta) {
-            state.currentPage = Number(meta.current_page || 1);
-            state.lastPage = Number(meta.last_page || 1);
-
-            const from = meta.from || 0;
-            const to = meta.to || 0;
-            const total = meta.total || 0;
-            metaElement.textContent = total > 0
-                ? 'Showing ' + from + '-' + to + ' of ' + total + ' SOP'
-                : 'No data';
-
-            prevButton.disabled = state.currentPage <= 1;
-            nextButton.disabled = state.currentPage >= state.lastPage;
+        function setLoadingState() {
+            hideFeedback();
+            clearSummary();
+            loadingElement.classList.remove('d-none');
         }
 
-        async function loadPage(page) {
+        function setErrorState(message) {
+            hideFeedback();
+            clearSummary();
+            errorElement.textContent = message;
+            errorElement.classList.remove('d-none');
+        }
+
+        function setEmptyState() {
+            hideFeedback();
+            clearSummary();
+            emptyElement.classList.remove('d-none');
+        }
+
+        function applyBackdropFocus() {
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (!backdrop) {
+                return;
+            }
+
+            backdrop.style.backgroundColor = 'rgba(8, 16, 30, 0.42)';
+            backdrop.style.opacity = '1';
+            backdrop.style.backdropFilter = 'blur(4px)';
+            backdrop.style.webkitBackdropFilter = 'blur(4px)';
+
+            if (document.body.classList.contains('kms-density-80')) {
+                backdrop.style.top = '-50vh';
+                backdrop.style.left = '-50vw';
+                backdrop.style.width = '200vw';
+                backdrop.style.height = '200vh';
+                backdrop.style.maxWidth = 'none';
+                backdrop.style.maxHeight = 'none';
+            }
+        }
+
+        async function loadDetailCards() {
             setLoadingState();
 
             try {
                 const params = new URLSearchParams(window.location.search);
+                params.delete('category_id');
+                params.delete('department_id');
+                params.delete('per_page');
                 params.set('stat', state.statKey);
-                params.set('page', String(page));
-                params.set('per_page', '10');
 
                 const response = await fetch(endpoint + '?' + params.toString(), {
                     headers: {
@@ -350,19 +436,17 @@
                 }
 
                 const payload = await response.json();
-                renderRows(payload.data || []);
-                updatePagination(payload.meta || {});
+                renderSummaries(payload.summaries || {});
             } catch (error) {
                 setErrorState('Failed to load SOP details. Please try again.');
             }
         }
 
         function openModalForCard(card) {
-            state.statKey = card.dataset.statKey || 'all';
-            state.statLabel = card.dataset.statLabel || 'SOP';
-            titleElement.textContent = 'Detail SOP - ' + state.statLabel;
+            setContext(card);
             modal.show();
-            loadPage(1);
+            window.requestAnimationFrame(applyBackdropFocus);
+            loadDetailCards();
         }
 
         cards.forEach(function (card) {
@@ -380,21 +464,31 @@
             });
         });
 
-        prevButton.addEventListener('click', function () {
-            if (state.currentPage <= 1) {
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            cards.forEach(function (item) {
+                item.classList.remove('kms-stat-selected');
+            });
+        });
+
+        modalElement.addEventListener('shown.bs.modal', applyBackdropFocus);
+
+        summaryWrapElement?.addEventListener('click', function (event) {
+            const trigger = event.target.closest('[data-dashboard-filter-key][data-dashboard-filter-value]');
+            if (!trigger) {
                 return;
             }
 
-            loadPage(state.currentPage - 1);
-        });
-
-        nextButton.addEventListener('click', function () {
-            if (state.currentPage >= state.lastPage) {
+            const filterKey = trigger.getAttribute('data-dashboard-filter-key');
+            const filterValue = trigger.getAttribute('data-dashboard-filter-value');
+            if (!filterKey || !filterValue) {
                 return;
             }
 
-            loadPage(state.currentPage + 1);
+            const params = new URLSearchParams(window.location.search);
+            params.set(filterKey, filterValue);
+            params.delete('page');
+            window.location.assign(window.location.pathname + '?' + params.toString());
         });
-    })();
+    });
 </script>
 @endsection

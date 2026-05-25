@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Providers\RouteServiceProvider;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +20,18 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                return redirect(RouteServiceProvider::HOME);
+                $user = Auth::guard($guard)->user();
+                $targetRoute = $user && $user->role === 'admin'
+                    ? 'admin.dashboard'
+                    : 'employee.dashboard';
+
+                // Prevent accidental self-redirect loops when guest middleware
+                // is attached to a destination route.
+                if ($request->routeIs($targetRoute)) {
+                    return $next($request);
+                }
+
+                return redirect()->route($targetRoute);
             }
         }
 

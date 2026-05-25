@@ -32,6 +32,7 @@ Route::middleware(['auth','role:admin'])
 
         Route::get('/sop/expired', [SopExpiredController::class, 'index'])->name('sop.expired.index');
         Route::post('/sop/expired/remind-selected', [SopExpiredController::class, 'bulkRemind'])->name('sop.expired.remind-selected');
+        Route::post('/sop/expired/remind-pic', [SopExpiredController::class, 'remindByPic'])->name('sop.expired.remind-pic');
         Route::post('/sop/{sop}/remind', [SopExpiredController::class, 'remind'])->whereNumber('sop')->name('sop.expired.remind');
         Route::post('/sop/{sop}/archive', [SopExpiredController::class, 'archive'])->whereNumber('sop')->name('sop.expired.archive');
         Route::get('/sop/expired/export', [SopExpiredController::class, 'export'])->name('sop.expired.export');
