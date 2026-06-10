@@ -611,6 +611,10 @@ body {
   max-width: 520px;
 }
 
+.kms-dashboard-filter-search {
+  max-width: none;
+}
+
 .kms-search-line .input-group-text {
   background: var(--kms-card);
   border-color: var(--kms-border);

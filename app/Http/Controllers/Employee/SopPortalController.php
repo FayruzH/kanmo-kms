@@ -11,6 +11,7 @@ use App\Models\SopLike;
 use App\Models\User;
 use App\Services\SopActivityService;
 use App\Services\SopSearchService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -31,8 +32,7 @@ class SopPortalController extends Controller
                 'comments',
                 'activityLogs as views_count',
             ])
-            ->whereIn('status', ['active', 'expiring_soon', 'expired'])
-            ->orderByDesc('updated_at');
+            ->whereIn('status', ['active', 'expiring_soon', 'expired']);
 
         $searchContext = $searchService->applyToQuery($query, $request->input('search'));
 
@@ -48,6 +48,8 @@ class SopPortalController extends Controller
             $query->where('status', $request->string('status')->value());
         }
 
+        $this->applyDashboardOrder($query, $searchContext !== null);
+
         $items = $query->paginate(9)->withQueryString();
         $searchService->appendSnippets($items->getCollection(), $searchContext);
 
@@ -62,6 +64,19 @@ class SopPortalController extends Controller
             'categories' => SopCategory::query()->where('active', true)->orderBy('name')->get(),
             'departments' => SopDepartment::query()->where('active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    private function applyDashboardOrder(Builder $query, bool $hasSearchRanking = false): void
+    {
+        $query->reorder()
+            ->orderByRaw("CASE sop_documents.status WHEN 'active' THEN 0 WHEN 'expiring_soon' THEN 1 WHEN 'expired' THEN 2 ELSE 3 END");
+
+        if ($hasSearchRanking) {
+            $query->orderByDesc('search_score');
+        }
+
+        $query->orderByDesc('updated_at')
+            ->orderByDesc('id');
     }
 
     public function statDetails(Request $request, SopSearchService $searchService)

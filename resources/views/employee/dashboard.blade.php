@@ -70,7 +70,7 @@
 
     <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
         <form method="GET" action="{{ route('employee.dashboard') }}" class="row g-2 flex-grow-1" data-auto-submit>
-            <div class="col-md-4">
+            <div class="col-md-4 col-xl-3">
                 <select name="category_id" class="form-select" data-auto-submit-select>
                     <option value="">All Divisions</option>
                     @foreach ($categories as $category)
@@ -78,7 +78,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-xl-3">
                 <select name="department_id" class="form-select" data-auto-submit-select>
                     <option value="">All Departments</option>
                     @foreach ($departments as $department)
@@ -86,13 +86,26 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-xl-2">
                 <select name="status" class="form-select" data-auto-submit-select>
                     <option value="">All Status</option>
                     @foreach (['active','expiring_soon','expired'] as $status)
                         <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
                     @endforeach
                 </select>
+            </div>
+            <div class="col-12 col-xl-4">
+                <div class="input-group kms-search-line kms-dashboard-filter-search">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input
+                        type="search"
+                        name="search"
+                        class="form-control"
+                        placeholder="Search SOP title, summary, tags..."
+                        value="{{ request('search') }}"
+                        data-auto-submit-input
+                    >
+                </div>
             </div>
         </form>
         <div class="small text-secondary">{{ number_format($items->total()) }} results</div>
