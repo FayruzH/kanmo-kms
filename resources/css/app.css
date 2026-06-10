@@ -560,6 +560,14 @@ body {
   box-shadow: none !important;
 }
 
+.kms-searchbox .input-group {
+  gap: 8px;
+}
+
+.kms-askbox {
+  max-width: 680px;
+}
+
 .kms-stat {
   border: 1px solid var(--kms-border);
   border-radius: 16px;
@@ -1297,6 +1305,15 @@ button.kms-summary-item {
   .kms-hero h2 {
     font-size: 1.8rem;
   }
+
+  .kms-searchbox {
+    max-width: 100%;
+  }
+
+  .kms-searchbox .form-control {
+    min-width: 220px;
+  }
+
   .kms-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

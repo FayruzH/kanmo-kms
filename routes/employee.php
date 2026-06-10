@@ -1,14 +1,20 @@
 <?php
 
+use App\Http\Controllers\Employee\ChatbotFeedbackController;
 use App\Http\Controllers\Employee\SopPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('employee')
     ->name('employee.')
+    ->middleware('employee.sso')
     ->group(function () {
         Route::get('/dashboard', [SopPortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/dashboard/stats-detail', [SopPortalController::class, 'statDetails'])->name('dashboard.stats-detail');
         Route::view('/chatbot', 'employee.chatbot')->name('chatbot');
+        Route::get('/feedback', [ChatbotFeedbackController::class, 'create'])->name('feedback.create');
+        Route::post('/feedback', [ChatbotFeedbackController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('feedback.store');
 
         Route::redirect('/sop', '/employee/dashboard')->name('sop.index');
         Route::get('/sop/{sop}', [SopPortalController::class, 'show'])->name('sop.show');

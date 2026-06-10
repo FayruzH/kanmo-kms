@@ -14,6 +14,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Employee Route Enforcement
+    |--------------------------------------------------------------------------
+    |
+    | Keep this false while the employee portal is still public. When the
+    | portal integration is ready, set it to true so employee pages require
+    | an authenticated SSO session.
+    |
+    */
+    'enforce_employee_auth' => env('PORTAL_SSO_ENFORCE_EMPLOYEE_AUTH', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Employee Portal Entry URL
+    |--------------------------------------------------------------------------
+    |
+    | Used when employee auth enforcement is enabled and a guest opens an
+    | employee page directly. This should point to the employee portal page
+    | that launches KMS through the signed /sso/portal-login URL.
+    |
+    */
+    'entry_url' => env('PORTAL_SSO_ENTRY_URL', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Shared Secret
     |--------------------------------------------------------------------------
     |
@@ -44,4 +68,3 @@ return [
     */
     'require_nonce' => (bool) env('PORTAL_SSO_REQUIRE_NONCE', true),
 ];
-

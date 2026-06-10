@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\ChatbotFeedbackController;
 use App\Http\Controllers\Admin\SopManagementController;
 use App\Http\Controllers\Admin\SopImportController;
 use App\Http\Controllers\Admin\SopExpiredController;
@@ -39,6 +40,7 @@ Route::middleware(['auth','role:admin'])
 
         Route::get('/analytics', [SopAnalyticsController::class, 'index'])->name('analytics.index');
         Route::get('/analytics/export', [SopAnalyticsController::class, 'export'])->name('analytics.export');
+        Route::get('/feedback', [ChatbotFeedbackController::class, 'index'])->name('feedback.index');
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');

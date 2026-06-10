@@ -119,6 +119,11 @@
           <a href="{{ route('admin.analytics.index') }}" class="kms-nav-link {{ request()->routeIs('admin.analytics.*') ? 'active' : '' }}">
             <i class="bi bi-bar-chart"></i><span class="kms-nav-text">Analytics</span>
           </a>
+          @if(\Illuminate\Support\Facades\Route::has('admin.feedback.index'))
+            <a href="{{ route('admin.feedback.index') }}" class="kms-nav-link {{ request()->routeIs('admin.feedback.*') ? 'active' : '' }}">
+              <i class="bi bi-chat-left-text"></i><span class="kms-nav-text">Feedback</span>
+            </a>
+          @endif
           <a href="{{ route('admin.settings.index') }}" class="kms-nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
             <i class="bi bi-gear"></i><span class="kms-nav-text">Settings</span>
           </a>
@@ -190,6 +195,11 @@
           <a href="{{ route('employee.chatbot') }}" class="kms-nav-link {{ request()->routeIs('employee.chatbot') ? 'active' : '' }}">
             <i class="bi bi-robot"></i><span class="kms-nav-text">Chatbot</span>
           </a>
+          @if(\Illuminate\Support\Facades\Route::has('employee.feedback.create'))
+            <a href="{{ route('employee.feedback.create') }}" class="kms-nav-link {{ request()->routeIs('employee.feedback.*') ? 'active' : '' }}">
+              <i class="bi bi-chat-left-dots"></i><span class="kms-nav-text">Feedback</span>
+            </a>
+          @endif
         </nav>
 
         <div class="kms-user">

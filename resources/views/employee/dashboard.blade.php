@@ -5,13 +5,22 @@
     <section class="kms-hero mb-4">
         <h2>Knowledge Management System</h2>
         <p class="fs-4 mb-0 opacity-75">
-            Find, access, and manage all Standard Operating Procedures in one place.
+            Ask KMS Assistant anything about SOP and knowledge management.
         </p>
-        <form method="GET" action="{{ route('employee.dashboard') }}" class="kms-searchbox" data-auto-submit>
+        <form method="GET" action="{{ route('employee.chatbot') }}" class="kms-searchbox kms-askbox">
             <div class="input-group">
-                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
-                <input type="text" name="search" class="form-control" placeholder="Search title, summary, tags, division, department, or source (ID/EN keywords)..." value="{{ request('search') }}" data-auto-submit-input>
-                <button class="btn btn-primary rounded-3 px-3" type="submit">Search</button>
+                <span class="input-group-text bg-transparent border-0"><i class="bi bi-robot"></i></span>
+                <input
+                    type="text"
+                    name="question"
+                    class="form-control"
+                    placeholder="Ask about SOP, policy, process, or KMS..."
+                    autocomplete="off"
+                    required
+                >
+                <button class="btn btn-primary rounded-3 px-3" type="submit">
+                    Ask
+                </button>
             </div>
         </form>
     </section>

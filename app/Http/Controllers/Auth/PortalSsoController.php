@@ -91,10 +91,10 @@ class PortalSsoController extends Controller
             $user->save();
         }
 
-        Auth::login($user, true);
+        Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('employee.dashboard');
+        return redirect()->intended(route('employee.dashboard'));
     }
 
     private function buildPayload(string $nip, string $name, string $email, int $timestamp, string $nonce): string
@@ -129,4 +129,3 @@ class PortalSsoController extends Controller
             ->exists();
     }
 }
-
