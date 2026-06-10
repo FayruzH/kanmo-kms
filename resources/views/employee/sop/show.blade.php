@@ -48,7 +48,11 @@
             <hr class="kms-detail-divider">
 
             <div class="kms-detail-actions mb-3">
-                <form method="POST" action="{{ $sop->type === 'file' ? route('employee.sop.download', $sop) : route('employee.sop.open', $sop) }}">
+                <form
+                    method="POST"
+                    action="{{ $sop->type === 'file' ? route('employee.sop.download', $sop) : route('employee.sop.open', $sop) }}"
+                    @if($sop->type !== 'file') target="_blank" @endif
+                >
                     @csrf
                     <button class="btn btn-primary">
                         <i class="bi {{ $sop->type === 'file' ? 'bi-download' : 'bi-box-arrow-up-right' }} me-1"></i>

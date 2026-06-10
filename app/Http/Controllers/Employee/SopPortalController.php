@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\SopActivityService;
 use App\Services\SopSearchService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -241,7 +242,7 @@ class SopPortalController extends Controller
         }
 
         abort_unless($sop->file_path, 404, 'SOP file not found.');
-        $url = Storage::disk('public')->url($sop->file_path);
+        $url = $this->publicDisk()->url($sop->file_path);
 
         return redirect($url);
     }
@@ -254,7 +255,15 @@ class SopPortalController extends Controller
         }
 
         abort_unless($sop->file_path, 404, 'SOP file not found.');
-        return Storage::disk('public')->download($sop->file_path, $sop->title . '.pdf');
+        return $this->publicDisk()->download($sop->file_path, $sop->title . '.pdf');
+    }
+
+    private function publicDisk(): FilesystemAdapter
+    {
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+
+        return $disk;
     }
 
     public function like(Request $request, SopDocument $sop)
