@@ -4,8 +4,7 @@
 
 @section('content')
 <div class="container-fluid px-0">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-8">
+    <div class="kms-feedback-page">
             @if(session('success'))
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
@@ -66,7 +65,6 @@
                     </form>
                 </div>
             </div>
-        </div>
     </div>
 </div>
 @endsection

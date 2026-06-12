@@ -68,8 +68,8 @@
         </div>
     </div>
 
-    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
-        <form method="GET" action="{{ route('employee.dashboard') }}" class="row g-2 flex-grow-1" data-auto-submit>
+    <div class="kms-dashboard-filter-bar d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
+        <form method="GET" action="{{ route('employee.dashboard') }}" class="kms-dashboard-filter-form row g-2 flex-grow-1" data-auto-submit>
             <div class="col-md-4 col-xl-3">
                 <select name="category_id" class="form-select" data-auto-submit-select>
                     <option value="">All Divisions</option>
@@ -108,7 +108,7 @@
                 </div>
             </div>
         </form>
-        <div class="small text-secondary">{{ number_format($items->total()) }} results</div>
+        <div class="kms-results-count small text-secondary">{{ number_format($items->total()) }} results</div>
     </div>
 
     <div class="row g-3">

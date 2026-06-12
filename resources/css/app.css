@@ -311,6 +311,10 @@ body {
   overflow: hidden;
 }
 
+.kms-mobile-menu-head {
+  display: none;
+}
+
 .kms-brand {
   display: flex;
   gap: 12px;
@@ -568,6 +572,11 @@ body {
   max-width: 680px;
 }
 
+.kms-feedback-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
 .kms-stat {
   border: 1px solid var(--kms-border);
   border-radius: 16px;
@@ -613,6 +622,10 @@ body {
 
 .kms-dashboard-filter-search {
   max-width: none;
+}
+
+.kms-results-count {
+  white-space: nowrap;
 }
 
 .kms-search-line .input-group-text {
@@ -1274,7 +1287,31 @@ button.kms-summary-item {
   color: #b8cae6;
 }
 
+.theme-dark .kms-mobile-menu-head {
+  background: rgba(15, 28, 47, 0.72);
+  color: var(--kms-text);
+  border-bottom-color: var(--kms-border);
+}
+
+.theme-dark .kms-mobile-menu-close {
+  color: var(--kms-muted);
+}
+
+.theme-dark .kms-mobile-menu-close:hover,
+.theme-dark .kms-mobile-menu-close:focus {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--kms-text);
+}
+
 @media (max-width: 992px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  body.kms-mobile-nav-open {
+    overflow: hidden;
+  }
+
   .kms-auth-shell {
     padding: 16px;
   }
@@ -1290,24 +1327,173 @@ button.kms-summary-item {
   }
 
   .kms-shell {
-    grid-template-columns: 1fr;
+    position: relative;
+    grid-template-columns: 1fr !important;
+    min-height: 100vh;
+  }
+
+  .kms-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1025;
+    background: rgba(8, 16, 30, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .kms-shell.mobile-nav-open::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  body.kms-mobile-nav-open .kms-shell::before {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .kms-sidebar {
-    position: relative;
-    height: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1035;
+    width: min(86vw, 340px);
+    height: 100svh;
+    border-right: 1px solid var(--kms-sidebar-border) !important;
+    border-bottom: 0;
+    box-shadow: 24px 0 48px rgba(15, 23, 42, 0.18);
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform 0.24s ease;
+  }
+
+  .kms-shell.mobile-nav-open .kms-sidebar {
+    transform: translateX(0);
+  }
+
+  body.kms-mobile-nav-open .kms-sidebar {
+    transform: translateX(0);
+  }
+
+  .kms-mobile-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--kms-sidebar-border);
+    background: rgba(255, 255, 255, 0.46);
+    color: #2d1d16;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .kms-mobile-menu-close {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    background: transparent;
+    color: #6c5347;
+  }
+
+  .kms-mobile-menu-close:hover,
+  .kms-mobile-menu-close:focus {
+    background: rgba(255, 255, 255, 0.7);
+    color: #2d1d16;
+  }
+
+  .kms-brand {
+    padding: 18px 18px 12px;
+    border-bottom: 1px solid rgba(215, 189, 170, 0.58);
+  }
+
+  .kms-brand-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .kms-brand-title {
+    font-size: 1.35rem;
+  }
+
+  .kms-brand-sub {
+    font-size: 0.82rem;
+  }
+
+  .kms-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px 14px;
+    overflow: visible;
+  }
+
+  .kms-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kms-nav-link {
+    justify-content: flex-start;
+    min-width: 0;
+    border-radius: 12px;
+    padding: 11px 13px;
+    gap: 10px;
+    font-size: 0.95rem;
+    text-align: left;
+  }
+
+  .kms-nav-link i {
+    font-size: 1.05rem;
+  }
+
+  .kms-user {
+    display: block;
+    margin-top: auto;
+    padding: 14px 18px;
+  }
+
+  .kms-profile-dropdown {
+    position: static;
+    margin-top: 10px;
+    min-width: 0;
+    transform: none;
+  }
+
+  .kms-topbar {
+    padding: 14px 16px;
+  }
+
+  .kms-topbar h1 {
+    font-size: 1.25rem;
+  }
+
+  .sidebar-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
   }
 
   .kms-main {
-    padding: 18px;
+    padding: 18px 16px 24px;
   }
 
   .kms-hero {
     padding: 26px 20px;
+    border-radius: 18px;
   }
 
   .kms-hero h2 {
     font-size: 1.8rem;
+  }
+
+  .kms-hero .fs-4 {
+    font-size: 1.05rem !important;
+    line-height: 1.45;
   }
 
   .kms-searchbox {
@@ -1315,11 +1501,51 @@ button.kms-summary-item {
   }
 
   .kms-searchbox .form-control {
-    min-width: 220px;
+    min-width: 0;
+  }
+
+  .kms-dashboard-filter-bar {
+    align-items: stretch !important;
+  }
+
+  .kms-dashboard-filter-form {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .kms-results-count {
+    width: 100%;
+    text-align: right;
+  }
+
+  .kms-card {
+    padding: 16px;
+  }
+
+  .kms-card h3 {
+    font-size: 1rem;
+    line-height: 1.3;
   }
 
   .kms-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kms-detail-hero {
+    padding: 22px 20px 16px;
+  }
+
+  .kms-detail-hero h1 {
+    font-size: 1.55rem;
+    line-height: 1.22;
+  }
+
+  .kms-detail-body {
+    padding: 20px !important;
+  }
+
+  .kms-table-wrap.p-4 {
+    padding: 20px !important;
   }
 }
 
@@ -1353,11 +1579,182 @@ button.kms-summary-item {
     gap: 8px;
   }
 
+  .kms-brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+  }
+
+  .kms-brand-title {
+    font-size: 1.18rem;
+  }
+
+  .kms-brand-sub {
+    font-size: 0.75rem;
+  }
+
+  .kms-nav {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .kms-nav-link {
+    flex-direction: row;
+    gap: 10px;
+    padding: 11px 12px;
+    font-size: 0.93rem;
+    line-height: 1.2;
+  }
+
+  .kms-nav-link i {
+    font-size: 1rem;
+  }
+
+  .kms-nav-text {
+    max-width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .kms-user {
+    padding: 12px 16px;
+  }
+
+  .kms-topbar {
+    padding: 12px 14px;
+  }
+
+  .kms-topbar h1 {
+    font-size: 1.1rem;
+  }
+
+  .kms-main {
+    padding: 14px 12px 22px;
+  }
+
+  .kms-hero {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+
+  .kms-hero h2 {
+    font-size: 1.5rem;
+  }
+
+  .kms-searchbox {
+    padding: 10px;
+    border-radius: 13px;
+  }
+
+  .kms-searchbox .input-group {
+    flex-wrap: wrap;
+  }
+
+  .kms-searchbox .input-group-text {
+    display: none;
+  }
+
+  .kms-searchbox .form-control {
+    flex: 1 0 100%;
+    width: 100%;
+    padding: 10px 4px;
+  }
+
+  .kms-searchbox .btn {
+    width: 100%;
+  }
+
+  .kms-dashboard-filter-bar {
+    gap: 8px !important;
+  }
+
+  .kms-dashboard-filter-form > [class*="col-"] {
+    width: 100%;
+  }
+
+  .kms-results-count {
+    text-align: left;
+  }
+
+  .kms-card {
+    border-radius: 14px;
+  }
+
+  .kms-card > .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .kms-card .status-pill {
+    align-self: flex-start;
+  }
+
+  .kms-card .d-flex.gap-2 {
+    flex-wrap: wrap;
+  }
+
+  .kms-card .d-flex.gap-2 .btn,
+  .kms-card .d-flex.gap-2 form {
+    width: 100%;
+  }
+
+  .kms-card .d-flex.gap-2 form .btn {
+    width: 100%;
+  }
+
+  .kms-card hr + .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
   .kms-detail-grid {
     grid-template-columns: 1fr;
   }
 
+  .kms-detail-card {
+    border-radius: 14px;
+  }
+
+  .kms-detail-hero {
+    padding: 20px 16px 14px;
+  }
+
+  .kms-detail-hero h1 {
+    font-size: 1.35rem;
+  }
+
+  .kms-detail-body {
+    padding: 16px !important;
+  }
+
   .kms-detail-actions .btn {
     width: 100%;
+  }
+
+  .kms-detail-actions form {
+    width: 100%;
+  }
+
+  .kms-detail-stats {
+    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kms-table-wrap.p-4 {
+    padding: 16px !important;
+  }
+
+  .kms-table-wrap .input-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .kms-table-wrap .input-group > .form-control,
+  .kms-table-wrap .input-group > .btn {
+    width: 100%;
+    border-radius: 10px !important;
   }
 }

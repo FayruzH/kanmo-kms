@@ -86,6 +86,95 @@
         padding-right: 0;
       }
     }
+
+    .kms-mobile-menu-head {
+      display: none;
+    }
+
+    @media (max-width: 992px) {
+      body.kms-mobile-nav-open {
+        overflow: hidden !important;
+      }
+
+      .kms-shell.kms-can-collapse {
+        display: block !important;
+        grid-template-columns: 1fr !important;
+      }
+
+      .kms-shell.kms-can-collapse::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 1025;
+        background: rgba(8, 16, 30, 0.42);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .kms-shell.kms-can-collapse.mobile-nav-open::before,
+      body.kms-mobile-nav-open .kms-shell.kms-can-collapse::before {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .kms-shell.kms-can-collapse > .kms-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 1035 !important;
+        width: min(86vw, 340px) !important;
+        height: 100svh !important;
+        max-height: 100svh !important;
+        overflow-y: auto !important;
+        border-right: 1px solid var(--kms-sidebar-border) !important;
+        border-bottom: 0 !important;
+        box-shadow: 24px 0 48px rgba(15, 23, 42, 0.18) !important;
+        transform: translateX(-110%) !important;
+        transition: transform 0.24s ease !important;
+      }
+
+      .kms-shell.kms-can-collapse.mobile-nav-open > .kms-sidebar,
+      body.kms-mobile-nav-open .kms-shell.kms-can-collapse > .kms-sidebar {
+        transform: translateX(0) !important;
+      }
+
+      .kms-mobile-menu-head {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--kms-sidebar-border);
+        background: rgba(255, 255, 255, 0.46);
+        color: #2d1d16;
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+
+      .kms-mobile-menu-close {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 999px;
+        display: inline-grid;
+        place-items: center;
+        background: transparent;
+        color: #6c5347;
+      }
+
+      .kms-shell.kms-can-collapse > .kms-content {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      .kms-shell.kms-can-collapse .sidebar-toggle {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 
@@ -95,6 +184,13 @@
   @if(request()->routeIs('admin.*'))
     <div class="kms-shell kms-can-collapse">
       <aside class="kms-sidebar border-end">
+        <div class="kms-mobile-menu-head">
+          <span>Menu</span>
+          <button type="button" class="kms-mobile-menu-close" data-mobile-menu-close aria-label="Close menu">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
         <div class="kms-brand">
           <div class="kms-brand-logo">K</div>
           <div class="kms-brand-copy">
@@ -163,7 +259,7 @@
       <div class="kms-content">
         <header class="kms-topbar border-bottom">
           <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-link p-0 border-0 text-secondary sidebar-toggle" aria-label="Toggle sidebar">
+            <button type="button" class="btn btn-link p-0 border-0 text-secondary sidebar-toggle" data-sidebar-toggle aria-label="Toggle sidebar" aria-expanded="false">
               <i class="bi bi-list fs-4"></i>
             </button>
             <h1 class="h4 mb-0">@yield('page_title', 'Dashboard')</h1>
@@ -180,6 +276,13 @@
   @elseif(!request()->routeIs('admin.*'))
     <div class="kms-shell kms-can-collapse">
       <aside class="kms-sidebar border-end">
+        <div class="kms-mobile-menu-head">
+          <span>Menu</span>
+          <button type="button" class="kms-mobile-menu-close" data-mobile-menu-close aria-label="Close menu">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
         <div class="kms-brand">
           <div class="kms-brand-logo">K</div>
           <div class="kms-brand-copy">
@@ -236,7 +339,7 @@
       <div class="kms-content">
         <header class="kms-topbar border-bottom">
           <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-link p-0 border-0 text-secondary sidebar-toggle" aria-label="Toggle sidebar">
+            <button type="button" class="btn btn-link p-0 border-0 text-secondary sidebar-toggle" data-sidebar-toggle aria-label="Toggle sidebar" aria-expanded="false">
               <i class="bi bi-list fs-4"></i>
             </button>
             <h1 class="h4 mb-0">@yield('page_title', 'Employee')</h1>
@@ -323,7 +426,7 @@
       });
 
       const shell = document.querySelector('.kms-shell.kms-can-collapse');
-      const toggleBtn = document.querySelector('.sidebar-toggle');
+      const toggleButtons = Array.from(document.querySelectorAll('[data-sidebar-toggle]'));
       const sidebarStateKey = 'kms_sidebar_collapsed';
       const body = document.body;
       const isDensity80 = body.classList.contains('kms-density-80');
@@ -334,8 +437,30 @@
       body.classList.toggle('kms-density-layout', useCompactLayoutDensity);
       const expandedSidebarWidth = useCompactLayoutDensity ? '232px' : '290px';
       const collapsedSidebarWidth = useCompactLayoutDensity ? '72px' : '90px';
+      const desktopSidebarQuery = window.matchMedia('(min-width: 993px)');
+
+      const setMobileNavOpen = (open) => {
+        if (!shell) return;
+        shell.classList.toggle('mobile-nav-open', open);
+        body.classList.toggle('kms-mobile-nav-open', open);
+        toggleButtons.forEach(function (button) {
+          button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      };
+
       const applySidebar = (collapsed) => {
         if (!shell) return;
+
+        if (!desktopSidebarQuery.matches) {
+          shell.classList.remove('sidebar-collapsed');
+          shell.style.gridTemplateColumns = '';
+          toggleButtons.forEach(function (button) {
+            button.setAttribute('aria-expanded', shell.classList.contains('mobile-nav-open') ? 'true' : 'false');
+          });
+          return;
+        }
+
+        setMobileNavOpen(false);
         shell.classList.toggle('sidebar-collapsed', collapsed);
         shell.style.gridTemplateColumns = collapsed
           ? `${collapsedSidebarWidth} 1fr`
@@ -343,16 +468,57 @@
         localStorage.setItem(sidebarStateKey, collapsed ? '1' : '0');
       };
 
+      const syncSidebarForViewport = () => {
+        if (!shell) return;
+        applySidebar(localStorage.getItem(sidebarStateKey) === '1');
+      };
+
       if (shell) {
-        const isCollapsed = localStorage.getItem(sidebarStateKey) === '1';
-        applySidebar(isCollapsed);
+        syncSidebarForViewport();
       }
 
-      if (toggleBtn && shell) {
-        toggleBtn.addEventListener('click', function () {
+      document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-sidebar-toggle]');
+        if (toggle && shell) {
+          event.preventDefault();
+
+          if (!desktopSidebarQuery.matches) {
+            setMobileNavOpen(!shell.classList.contains('mobile-nav-open'));
+            return;
+          }
+
           const next = !shell.classList.contains('sidebar-collapsed');
           applySidebar(next);
-        });
+          return;
+        }
+
+        if (event.target.closest('[data-mobile-menu-close]')) {
+          setMobileNavOpen(false);
+          return;
+        }
+
+        if (!shell || desktopSidebarQuery.matches || !shell.classList.contains('mobile-nav-open')) {
+          return;
+        }
+
+        const clickedOutsideMenu = !event.target.closest('.kms-sidebar');
+        const clickedNavLink = Boolean(event.target.closest('.kms-sidebar .kms-nav-link'));
+
+        if (clickedOutsideMenu || clickedNavLink) {
+          setMobileNavOpen(false);
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setMobileNavOpen(false);
+        }
+      });
+
+      if (typeof desktopSidebarQuery.addEventListener === 'function') {
+        desktopSidebarQuery.addEventListener('change', syncSidebarForViewport);
+      } else if (typeof desktopSidebarQuery.addListener === 'function') {
+        desktopSidebarQuery.addListener(syncSidebarForViewport);
       }
     })();
   </script>
